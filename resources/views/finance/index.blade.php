@@ -491,27 +491,37 @@
                                         <input type="number" name="no_of_months" id="months" class="form-control glass-input px-3 py-2 fw-bold text-center border-primary" style="background: rgba(0, 122, 255, 0.05) !important;" oninput="calculateFromMonths()" min="1">
                                     </div>
 
-                                    <div class="col-md-4 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold">Service Fee (0.5%)</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
-                                            <input type="number" step="0.01" name="service_fee" id="service_fee" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold">Interest (9%)</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
-                                            <input type="number" step="0.01" name="interest" id="interest" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold">Surcharge</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
-                                            <input type="number" step="0.01" name="surcharge" id="surcharge" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
-                                        </div>
-                                    </div>
+                                    <div class="col-md-3 mt-3">
+    <label class="small text-secondary mb-1 fw-semibold">Service Fee (0.5%)</label>
+    <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
+        <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
+        <input type="number" step="0.01" name="service_fee" id="service_fee" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
+    </div>
+</div>
+
+<div class="col-md-3 mt-3">
+    <label class="small text-secondary mb-1 fw-semibold text-dark">Interest Rate (%)</label>
+    <div class="input-group glass-input" style="padding: 0; overflow: hidden; border-color: rgba(0,0,0,0.1) !important;">
+        <input type="number" step="0.01" id="interest_rate_input" class="form-control bg-transparent border-0 py-2 shadow-none text-center fw-bold" value="9" oninput="calculateAll()" required>
+        <span class="input-group-text bg-transparent border-0 text-muted ps-2 pe-3">%</span>
+    </div>
+</div>
+
+<div class="col-md-3 mt-3">
+    <label class="small text-secondary mb-1 fw-semibold">Interest Amount</label>
+    <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
+        <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
+        <input type="number" step="0.01" name="interest" id="interest" class="form-control bg-transparent border-0 py-2 shadow-none fw-bold text-dark" readonly>
+    </div>
+</div>
+
+<div class="col-md-3 mt-3">
+    <label class="small text-secondary mb-1 fw-semibold">Surcharge</label>
+    <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
+        <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
+        <input type="number" step="0.01" name="surcharge" id="surcharge" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
+    </div>
+</div>
 
                                     <div class="col-12 mt-3">
                                         <div class="net-proceeds-panel p-2 px-3 d-flex justify-content-between align-items-center">
@@ -642,29 +652,34 @@
     }
 
     function calculateAll() {
-        let amount = parseFloat(document.getElementById('amount').value) || 0;
-        let months = parseInt(document.getElementById('months').value) || 0;
+    let amount = parseFloat(document.getElementById('amount').value) || 0;
+    let months = parseInt(document.getElementById('months').value) || 0;
+    
+    // NEW: Fetch the manual interest rate (defaults to 9 if empty)
+    let interestRate = parseFloat(document.getElementById('interest_rate_input').value) || 0;
 
-        let serviceFee = amount * 0.005;
-        let interest = amount * 0.09;
-        
-        let surcharge = 0;
-        if (months > 0) {
-            surcharge = amount * 0.0011 * months;
-        }
-
-        document.getElementById('service_fee').value = serviceFee.toFixed(2);
-        document.getElementById('interest').value = interest.toFixed(2);
-        document.getElementById('surcharge').value = surcharge.toFixed(2);
-
-        let net = amount - (serviceFee + surcharge);
-        
-        if(net < 0) net = 0;
-
-        // Injects Peso sign directly into the JS string output for a cohesive look
-        document.getElementById('net_proceeds_display').value = '₱ ' + net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('net_proceeds_actual').value = net.toFixed(2);
+    let serviceFee = amount * 0.005;
+    
+    // UPDATED: Calculate interest based on the inputted rate
+    let interest = amount * (interestRate / 100);
+    
+    let surcharge = 0;
+    if (months > 0) {
+        surcharge = amount * 0.0011 * months;
     }
+
+    document.getElementById('service_fee').value = serviceFee.toFixed(2);
+    document.getElementById('interest').value = interest.toFixed(2);
+    document.getElementById('surcharge').value = surcharge.toFixed(2);
+
+    // Note: Kept your original Net Amount formula exactly as you wrote it
+    let net = amount - (serviceFee + surcharge);
+    
+    if(net < 0) net = 0;
+
+    document.getElementById('net_proceeds_display').value = '₱ ' + net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('net_proceeds_actual').value = net.toFixed(2);
+}
 </script>
 @endpush
 @endsection
