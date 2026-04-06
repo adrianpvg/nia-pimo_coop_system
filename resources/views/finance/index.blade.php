@@ -436,9 +436,9 @@
                                 
                                 <div class="row g-3">
                                     <div class="col-12">
-                                        <label class="small text-secondary mb-1 fw-semibold">Date of Application <span class="text-danger">*</span></label>
-                                        <input type="date" name="date_of_application" id="date_applied" class="form-control glass-input px-3 py-2" value="{{ date('Y-m-d') }}" onchange="syncDate()" required>
-                                    </div>
+    <label class="small text-secondary mb-1 fw-semibold">Date of Application <span class="text-danger">*</span></label>
+    <input type="date" name="date_of_application" id="date_applied" class="form-control glass-input px-3 py-2" value="2026-01-08" onchange="syncDate()" required>
+</div>
                                     <div class="col-12">
                                         <label class="small text-secondary mb-1 fw-semibold">Office <span class="text-danger">*</span></label>
                                         <select name="office_name" class="form-select glass-input px-3 py-2" required>
@@ -479,13 +479,13 @@
                                     </div>
 
                                     <div class="col-md-4">
-                                        <label class="small text-secondary mb-1 fw-semibold">Payment Start <span class="text-danger">*</span></label>
-                                        <input type="date" name="payment_start" id="start_date" class="form-control glass-input px-3 py-2" onchange="calculateFromDates()" required>
-                                    </div>
+    <label class="small text-secondary mb-1 fw-semibold">Payment Start <span class="text-danger">*</span></label>
+    <input type="date" name="payment_start" id="start_date" class="form-control glass-input px-3 py-2" value="2026-01-08" onchange="calculateFromDates()" required>
+</div>
                                     <div class="col-md-4">
-                                        <label class="small text-secondary mb-1 fw-semibold">Payment End <span class="text-danger">*</span></label>
-                                        <input type="date" name="payment_end" id="end_date" class="form-control glass-input px-3 py-2" onchange="calculateFromDates()" required>
-                                    </div>
+    <label class="small text-secondary mb-1 fw-semibold">Payment End <span class="text-danger">*</span></label>
+    <input type="date" name="payment_end" id="end_date" class="form-control glass-input px-3 py-2" value="2026-06-07" onchange="calculateFromDates()" required>
+</div>
                                     <div class="col-md-4">
                                         <label class="small text-secondary mb-1 fw-semibold text-primary">Duration (Months) <i class="bi bi-pencil-square ms-1 small"></i></label>
                                         <input type="number" name="no_of_months" id="months" class="form-control glass-input px-3 py-2 fw-bold text-center border-primary" style="background: rgba(0, 122, 255, 0.05) !important;" oninput="calculateFromMonths()" min="1">
@@ -540,10 +540,18 @@
                     </div> 
                 </div>
                 
-                <div class="modal-footer border-top-0 pt-2 px-4 pb-4 mt-2">
-                    <button type="button" class="btn btn-light rounded-pill px-4 shadow-sm" data-bs-dismiss="modal" style="background: rgba(255,255,255,0.7);">Cancel Application</button>
-                    <button type="submit" class="btn btn-dark rounded-pill px-5 shadow-sm fw-bold">Submit Loan Record</button>
-                </div>
+                <div class="modal-footer border-top-0 pt-2 px-4 pb-4 mt-2 d-flex justify-content-between">
+    <div>
+        <button type="button" onclick="printLoanSchedule()" class="btn btn-outline-primary rounded-pill px-4 shadow-sm fw-bold d-flex align-items-center" style="background: rgba(255,255,255,0.6); border-color: rgba(0, 122, 255, 0.5);">
+            <i class="bi bi-printer-fill me-2"></i> Print Loan Schedule
+        </button>
+    </div>
+    
+    <div>
+        <button type="button" class="btn btn-light rounded-pill px-4 shadow-sm me-2" data-bs-dismiss="modal" style="background: rgba(255,255,255,0.7);">Cancel Application</button>
+        <button type="submit" class="btn btn-dark rounded-pill px-5 shadow-sm fw-bold">Submit Loan Record</button>
+    </div>
+</div>
             </form>
         </div>
     </div>
@@ -551,6 +559,8 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script src="{{ asset('js/loan-printer.js') }}"></script>
 
 <script>
     $(document).ready(function() { 
