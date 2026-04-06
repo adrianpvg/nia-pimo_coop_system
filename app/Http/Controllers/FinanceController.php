@@ -14,7 +14,6 @@ class FinanceController extends Controller
 {
     public function index(Request $request, $type = 'ALL')
     {
-        // Get the filters from the URL, defaulting to current year and 'ALL' offices
         $year = $request->input('year', Carbon::now()->year);
         $officeFilter = $request->input('office', 'ALL');
 
@@ -24,7 +23,6 @@ class FinanceController extends Controller
             $query->where('type', $type);
         }
 
-        // Apply the new Office Filter
         if ($officeFilter !== 'ALL') {
             $query->whereHas('borrower.office', function($q) use ($officeFilter) {
                 $q->where('name', $officeFilter);
@@ -39,7 +37,6 @@ class FinanceController extends Controller
             return $loan;
         });
 
-        // Calculate Summary Statistics
         $total_principal = $loans->sum('amount_granted');
         $summary = [
             'total_loans' => $loans->count(),
@@ -48,7 +45,6 @@ class FinanceController extends Controller
             'total_balance' => $loans->sum('balance'),
         ];
 
-        // Custom Logic for 'ALL' vs Specific Loan Types
         if ($type === 'ALL') {
             $summary['chart_data'] = $loans->groupBy('type')->map(function ($group) {
                 return $group->sum('amount_granted');
@@ -74,7 +70,6 @@ class FinanceController extends Controller
             }
         }
 
-        // Populate filter dropdowns
         $availableYears = Loan::selectRaw('YEAR(date_of_application) as year')
             ->distinct()
             ->orderBy('year', 'desc')
@@ -98,23 +93,34 @@ class FinanceController extends Controller
             'office_name' => 'required|string',
             'date_of_application' => 'required|date',
             'payment_start' => 'required|date',
-            'payment_end' => 'required|date',
-            'amount_granted' => 'required|numeric',
+            'payment_end' => 'required|date|after_or_equal:payment_start',
+            'no_of_months' => 'required|integer|min:1|max:120',
+            'amount_granted' => 'required|numeric|min:0',
+            'interest_rate' => 'required|numeric|min:0',
         ]);
 
         $date = Carbon::parse($request->date_of_application);
         $year = $date->format('y'); 
         $month = $date->format('m'); 
         
-        $count = Loan::whereYear('date_of_application', $date->year)
-                     ->whereMonth('date_of_application', $date->month)
-                     ->count() + 1;
-        
-        $control_number = $year . '-' . $month . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+        // --- CORRECTED LOGIC START ---
+        // Instead of count(), find the loan with the highest control number for this specific month
+        $lastLoan = Loan::whereYear('date_of_application', $date->year)
+                        ->whereMonth('date_of_application', $date->month)
+                        ->orderBy('control_number', 'desc')
+                        ->first();
 
-        $start = Carbon::parse($request->payment_start);
-        $end = Carbon::parse($request->payment_end);
-        $no_of_months = $start->diffInMonths($end) + 1;
+        if ($lastLoan) {
+            // Extract the last 3 digits (the sequence) from the existing control number and increment it
+            $lastSequence = (int) substr($lastLoan->control_number, -3);
+            $nextSequence = $lastSequence + 1;
+        } else {
+            // If no loans exist for this month yet, start at 1
+            $nextSequence = 1;
+        }
+        
+        $control_number = $year . '-' . $month . '-' . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
+        // --- CORRECTED LOGIC END ---
 
         $office = Office::firstOrCreate(['name' => strtoupper($request->office_name)]);
         $borrower = Borrower::firstOrCreate(
@@ -133,12 +139,12 @@ class FinanceController extends Controller
             'date_of_application' => $request->date_of_application,
             'amount_granted' => $request->amount_granted,
             'service_fee' => $request->service_fee ?? 0,
-            'interest_rate' => $request->interest ?? 0,
+            'interest_rate' => $request->interest_rate ?? 0, 
             'surcharge' => $request->surcharge ?? 0,
             'net_proceeds' => $request->net_proceeds,
             'payment_start' => $request->payment_start,
             'payment_end' => $request->payment_end,
-            'no_of_months' => $no_of_months,
+            'no_of_months' => $request->no_of_months, 
         ]);
 
         return back()->with('success', 'Application Added! Control No: ' . $control_number);
@@ -150,8 +156,30 @@ class FinanceController extends Controller
         return view('finance.show', compact('loan'));
     }
 
+    // NEW: Delete Entire Loan Application Logic
+    public function destroyLoan($id)
+    {
+        $loan = Loan::findOrFail($id);
+        
+        // Delete all associated payments first so the database doesn't crash from foreign key constraints
+        $loan->payments()->delete(); 
+        
+        // Then delete the loan
+        $loan->delete();
+
+        // Redirect back to the index view, carrying over the success message
+        return redirect()->route('finance.index')->with('success', 'Loan application and all related payment records have been deleted.');
+    }
+
     public function addPayment(Request $request)
     {
+        $request->validate([
+            'loan_id' => 'required|exists:loans,id',
+            'amount_paid' => 'required|numeric|min:0.01',
+            'or_number' => 'required|string',
+            'payment_date' => 'required|date',
+        ]);
+
         Payment::create([
             'loan_id' => $request->loan_id,
             'amount_paid' => $request->amount_paid,
@@ -160,6 +188,14 @@ class FinanceController extends Controller
             'payment_date' => $request->payment_date,
         ]);
         return back()->with('success', 'Payment Recorded!');
+    }
+
+    public function deletePayment($id)
+    {
+        $payment = Payment::findOrFail($id);
+        $payment->delete();
+        
+        return back()->with('success', 'Payment successfully deleted.');
     }
 
     public function export(Request $request, $type = 'ALL') 

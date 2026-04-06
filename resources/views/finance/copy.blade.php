@@ -71,7 +71,7 @@
     /* Glass Form Inputs (General) */
     .glass-input {
         background: rgba(255, 255, 255, 0.5) !important;
-        border: 1px solid rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.8) !important;
         border-radius: 12px;
         transition: all 0.3s ease;
         color: #2d3748 !important;
@@ -86,26 +86,6 @@
         background: rgba(0,0,0,0.02) !important;
         color: var(--text-secondary) !important;
         border-color: rgba(0,0,0,0.05) !important;
-    }
-
-    /* Custom Validation Styling Fixes */
-    .was-validated .glass-input:invalid,
-    .glass-input.is-invalid,
-    .was-validated .form-select:invalid {
-        border-color: #dc3545 !important;
-        background-color: rgba(220, 53, 69, 0.03) !important;
-        background-image: none !important; 
-    }
-    
-    .invalid-group {
-        border-color: #dc3545 !important;
-        background-color: rgba(220, 53, 69, 0.03) !important;
-    }
-
-    .invalid-feedback {
-        font-size: 0.75rem;
-        font-weight: 600;
-        margin-top: 0.25rem;
     }
 
     /* DataTables Transparent Overrides */
@@ -288,41 +268,11 @@
                             <td class="text-muted">{{ $loan->payment_start }}</td>
                             <td class="text-muted">{{ $loan->payment_end }}</td>
                             <td>
-                                <div class="d-flex align-items-center justify-content-center gap-2">
-                                    <a href="{{ route('finance.show', $loan->id) }}" class="btn btn-sm btn-light border rounded-pill px-3 shadow-sm" style="background: rgba(255,255,255,0.8);">
-                                        View
-                                    </a>
-                                    
-                                    <button type="button" data-bs-toggle="modal" data-bs-target="#deleteLoanModal{{ $loan->id }}" class="btn btn-sm btn-outline-danger border-0 rounded-circle shadow-sm bg-white" title="Delete Loan Record">
-                                        <i class="bi bi-trash-fill"></i>
-                                    </button>
-                                </div>
+                                <a href="{{ route('finance.show', $loan->id) }}" class="btn btn-sm btn-light border rounded-pill px-3 shadow-sm" style="background: rgba(255,255,255,0.8);">
+                                    View
+                                </a>
                             </td>
                         </tr>
-
-                        <div class="modal fade loan-delete-modal" id="deleteLoanModal{{ $loan->id }}" tabindex="-1" aria-hidden="true" style="white-space: normal;">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content glass-modal-content">
-                                    <div class="modal-header border-0 pb-0">
-                                        <h5 class="modal-title fw-bold text-danger">Delete Loan Application</h5>
-                                        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <div class="modal-body text-secondary pb-4 text-start">
-                                        Are you sure you want to completely delete the loan application for <strong class="text-dark">{{ $loan->borrower->name }}</strong> (Control No: {{ $loan->control_number }})?<br><br>
-                                        <strong class="text-danger">Warning:</strong> This will also permanently delete any payment history attached to it. This action cannot be undone.
-                                    </div>
-                                    <div class="modal-footer border-0 pt-0">
-                                        <button type="button" class="btn btn-light glass-panel" data-bs-dismiss="modal">Cancel</button>
-                                        <form action="{{ route('finance.destroy', $loan->id) }}" method="POST" class="m-0">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-danger" style="border-radius: 8px;">Delete Loan</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         @endforeach
                     </tbody>
                 </table>
@@ -449,7 +399,7 @@
 <div class="modal fade" id="createLoanModal" tabindex="-1">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content glass-modal-content border-0">
-            <form action="{{ route('finance.store') }}" method="POST" id="loanForm" novalidate>
+            <form action="{{ route('finance.store') }}" method="POST">
                 @csrf
                 
                 <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
@@ -471,7 +421,6 @@
                                     <option value="SPECIAL LOAN">Special Loan</option>
                                     <option value="CASAB">CASAB Loan</option>
                                 </select>
-                                <div class="invalid-feedback ps-2">Please select a loan type.</div>
                             </div>
                         </div>
                     @else
@@ -487,10 +436,9 @@
                                 
                                 <div class="row g-3">
                                     <div class="col-12">
-                                        <label class="small text-secondary mb-1 fw-semibold">Date of Application <span class="text-danger">*</span></label>
-                                        <input type="date" name="date_of_application" id="date_applied" class="form-control glass-input px-3 py-2" value="{{ date('Y-m-d') }}" min="2026-01-01" onchange="syncDate()" required>
-                                        <div class="invalid-feedback">Date must be from 2026 onwards.</div>
-                                    </div>
+    <label class="small text-secondary mb-1 fw-semibold">Date of Application <span class="text-danger">*</span></label>
+    <input type="date" name="date_of_application" id="date_applied" class="form-control glass-input px-3 py-2" value="2026-01-08" onchange="syncDate()" required>
+</div>
                                     <div class="col-12">
                                         <label class="small text-secondary mb-1 fw-semibold">Office <span class="text-danger">*</span></label>
                                         <select name="office_name" class="form-select glass-input px-3 py-2" required>
@@ -506,7 +454,6 @@
                                     <div class="col-12 mt-4">
                                         <label class="small text-secondary mb-1 fw-semibold">Name of Applicant <span class="text-danger">*</span></label>
                                         <input type="text" name="borrower_name" class="form-control glass-input px-3 py-2" placeholder="Enter Full Name" required>
-                                        <div class="invalid-feedback">Applicant name is required.</div>
                                     </div>
                                     <div class="col-12">
                                         <label class="small text-secondary mb-1 fw-semibold">Name of Co-Maker</label>
@@ -525,70 +472,56 @@
                                 <div class="row g-3">
                                     <div class="col-md-12 mb-2">
                                         <label class="small text-secondary mb-1 fw-semibold">Principal Amount Granted <span class="text-danger">*</span></label>
-                                        <div class="input-group glass-input" id="amount_group" style="padding: 0; overflow: hidden; border-color: rgba(0, 122, 255, 0.4); box-shadow: 0 4px 10px rgba(0, 122, 255, 0.05);">
+                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; border-color: rgba(0, 122, 255, 0.4) !important; box-shadow: 0 4px 10px rgba(0, 122, 255, 0.05);">
                                             <span class="input-group-text bg-transparent border-0 text-primary ps-3 pe-2 fw-bold fs-5">₱</span>
-                                            
-                                            <input type="text" id="amount_display" class="form-control bg-transparent border-0 py-3 fw-bold fs-4 text-primary shadow-none" 
-                                                   placeholder="0.00" 
-                                                   oninput="cleanCurrencyInput(this)" 
-                                                   onblur="formatCurrencyInput(this)"
-                                                   onfocus="unformatCurrencyInput(this)" required>
-                                            <input type="hidden" name="amount_granted" id="amount" value="0">
+                                            <input type="number" step="0.01" name="amount_granted" id="amount" class="form-control bg-transparent border-0 py-3 fw-bold fs-4 text-primary shadow-none" oninput="calculateAll()" placeholder="0.00" required>
                                         </div>
-                                        <div class="invalid-feedback" id="amount_error" style="display: none;">Amount must be greater than zero.</div>
                                     </div>
 
                                     <div class="col-md-4">
-                                        <label class="small text-secondary mb-1 fw-semibold">Payment Start <span class="text-danger">*</span></label>
-                                        <input type="date" name="payment_start" id="start_date" class="form-control glass-input px-3 py-2" value="{{ date('Y-m-d') }}" min="2026-01-01" onchange="calculateFromDates()" required>
-                                        <div class="invalid-feedback">Date must be from 2026 onwards.</div>
-                                    </div>
+    <label class="small text-secondary mb-1 fw-semibold">Payment Start <span class="text-danger">*</span></label>
+    <input type="date" name="payment_start" id="start_date" class="form-control glass-input px-3 py-2" value="2026-01-08" onchange="calculateFromDates()" required>
+</div>
                                     <div class="col-md-4">
-                                        <label class="small text-secondary mb-1 fw-semibold">Payment End <span class="text-danger">*</span></label>
-                                        <input type="date" name="payment_end" id="end_date" class="form-control glass-input px-3 py-2" value="{{ \Carbon\Carbon::now()->addMonths(6)->format('Y-m-d') }}" min="2026-01-01" onchange="calculateFromDates()" required>
-                                        <div class="invalid-feedback" id="end_date_error">Date must be logically after Start Date.</div>
-                                    </div>
+    <label class="small text-secondary mb-1 fw-semibold">Payment End <span class="text-danger">*</span></label>
+    <input type="date" name="payment_end" id="end_date" class="form-control glass-input px-3 py-2" value="2026-06-07" onchange="calculateFromDates()" required>
+</div>
                                     <div class="col-md-4">
                                         <label class="small text-secondary mb-1 fw-semibold text-primary">Duration (Months) <i class="bi bi-pencil-square ms-1 small"></i></label>
-                                        <input type="number" name="no_of_months" id="months" class="form-control glass-input px-3 py-2 fw-bold text-center border-primary" style="background: rgba(0, 122, 255, 0.05) !important;" oninput="calculateFromMonths()" min="1" max="120" step="1" required>
-                                        <div class="invalid-feedback">Enter a valid integer (1 to 120).</div>
+                                        <input type="number" name="no_of_months" id="months" class="form-control glass-input px-3 py-2 fw-bold text-center border-primary" style="background: rgba(0, 122, 255, 0.05) !important;" oninput="calculateFromMonths()" min="1">
                                     </div>
 
                                     <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold">Service Fee (0.5%)</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
-                                            <input type="text" id="service_fee_display" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
-                                            <input type="hidden" name="service_fee" id="service_fee">
-                                        </div>
-                                    </div>
+    <label class="small text-secondary mb-1 fw-semibold">Service Fee (0.5%)</label>
+    <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
+        <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
+        <input type="number" step="0.01" name="service_fee" id="service_fee" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
+    </div>
+</div>
 
-                                    <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold text-dark">Interest Rate (%)</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; border-color: rgba(0,0,0,0.1);">
-                                            <input type="number" step="0.01" id="interest_rate_input" name="interest_rate" class="form-control bg-transparent border-0 py-2 shadow-none text-center fw-bold" value="9" min="0" oninput="calculateAll()" required>
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-2 pe-3">%</span>
-                                        </div>
-                                        <div class="invalid-feedback">Enter a valid rate.</div>
-                                    </div>
+<div class="col-md-3 mt-3">
+    <label class="small text-secondary mb-1 fw-semibold text-dark">Interest Rate (%)</label>
+    <div class="input-group glass-input" style="padding: 0; overflow: hidden; border-color: rgba(0,0,0,0.1) !important;">
+        <input type="number" step="0.01" id="interest_rate_input" class="form-control bg-transparent border-0 py-2 shadow-none text-center fw-bold" value="9" oninput="calculateAll()" required>
+        <span class="input-group-text bg-transparent border-0 text-muted ps-2 pe-3">%</span>
+    </div>
+</div>
 
-                                    <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold">Interest Amount</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
-                                            <input type="text" id="interest_display" class="form-control bg-transparent border-0 py-2 shadow-none fw-bold text-dark" readonly>
-                                            <input type="hidden" name="interest" id="interest">
-                                        </div>
-                                    </div>
+<div class="col-md-3 mt-3">
+    <label class="small text-secondary mb-1 fw-semibold">Interest Amount</label>
+    <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
+        <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
+        <input type="number" step="0.01" name="interest" id="interest" class="form-control bg-transparent border-0 py-2 shadow-none fw-bold text-dark" readonly>
+    </div>
+</div>
 
-                                    <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold">Surcharge</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
-                                            <input type="text" id="surcharge_display" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
-                                            <input type="hidden" name="surcharge" id="surcharge">
-                                        </div>
-                                    </div>
+<div class="col-md-3 mt-3">
+    <label class="small text-secondary mb-1 fw-semibold">Surcharge</label>
+    <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
+        <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
+        <input type="number" step="0.01" name="surcharge" id="surcharge" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
+    </div>
+</div>
 
                                     <div class="col-12 mt-3">
                                         <div class="net-proceeds-panel p-2 px-3 d-flex justify-content-between align-items-center">
@@ -608,17 +541,17 @@
                 </div>
                 
                 <div class="modal-footer border-top-0 pt-2 px-4 pb-4 mt-2 d-flex justify-content-between">
-                    <div>
-                        <button type="button" onclick="printLoanSchedule()" class="btn btn-outline-primary rounded-pill px-4 shadow-sm fw-bold d-flex align-items-center" style="background: rgba(255,255,255,0.6); border-color: rgba(0, 122, 255, 0.5);">
-                            <i class="bi bi-printer-fill me-2"></i> Print Loan Schedule
-                        </button>
-                    </div>
-                    
-                    <div>
-                        <button type="button" class="btn btn-light rounded-pill px-4 shadow-sm me-2" data-bs-dismiss="modal" style="background: rgba(255,255,255,0.7);">Cancel Application</button>
-                        <button type="submit" class="btn btn-dark rounded-pill px-5 shadow-sm fw-bold" id="submitBtn">Submit Loan Record</button>
-                    </div>
-                </div>
+    <div>
+        <button type="button" onclick="printLoanSchedule()" class="btn btn-outline-primary rounded-pill px-4 shadow-sm fw-bold d-flex align-items-center" style="background: rgba(255,255,255,0.6); border-color: rgba(0, 122, 255, 0.5);">
+            <i class="bi bi-printer-fill me-2"></i> Print Loan Schedule
+        </button>
+    </div>
+    
+    <div>
+        <button type="button" class="btn btn-light rounded-pill px-4 shadow-sm me-2" data-bs-dismiss="modal" style="background: rgba(255,255,255,0.7);">Cancel Application</button>
+        <button type="submit" class="btn btn-dark rounded-pill px-5 shadow-sm fw-bold">Submit Loan Record</button>
+    </div>
+</div>
             </form>
         </div>
     </div>
@@ -626,16 +559,14 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script src="{{ asset('js/loan-printer.js') }}"></script>
 
 <script>
     $(document).ready(function() { 
         $('#createLoanModal').appendTo('body');
-        
-        // NEW: Ensure all dynamically generated delete modals go to the body
-        $('.loan-delete-modal').appendTo('body');
 
-        // Init DataTables
+        // Only init DataTables if the table is actually rendered in the DOM
         if ($('#loansTable').length) {
             $('#loansTable').DataTable({
                 "destroy": true,
@@ -672,7 +603,7 @@
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
+                    maintainAspectRatio: false, // Allows the fixed 260x260px wrapper to dictate size
                     plugins: {
                         legend: {
                             position: 'bottom',
@@ -682,156 +613,31 @@
                 }
             });
         }
-
-        // Intercept form submission to run native Bootstrap validations
-        document.getElementById('loanForm').addEventListener('submit', function(event) {
-            let isValid = true;
-            
-            // Check native HTML5 constraints
-            if (!this.checkValidity()) {
-                event.preventDefault();
-                event.stopPropagation();
-                isValid = false;
-            }
-
-            // Custom Amount Validation
-            let amount = parseFloat(document.getElementById('amount').value) || 0;
-            if (amount <= 0) {
-                document.getElementById('amount_display').classList.add('is-invalid');
-                document.getElementById('amount_group').classList.add('invalid-group');
-                document.getElementById('amount_error').style.display = 'block';
-                isValid = false;
-            } else {
-                document.getElementById('amount_display').classList.remove('is-invalid');
-                document.getElementById('amount_group').classList.remove('invalid-group');
-                document.getElementById('amount_error').style.display = 'none';
-            }
-
-            // Custom Months Validation
-            let months = parseInt(document.getElementById('months').value) || 0;
-            if (months < 1 || months > 120) {
-                document.getElementById('months').classList.add('is-invalid');
-                isValid = false;
-            } else {
-                document.getElementById('months').classList.remove('is-invalid');
-            }
-
-            // Custom Dates Validation
-            let dates = ['date_applied', 'start_date', 'end_date'];
-            dates.forEach(function(id) {
-                let el = document.getElementById(id);
-                if (el.value < '2026-01-01') {
-                    el.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    el.classList.remove('is-invalid');
-                }
-            });
-
-            if(!isValid) {
-                event.preventDefault();
-                event.stopPropagation();
-                this.classList.add('was-validated');
-            }
-        }, false);
     });
-
-    // UX: Clean letters while typing and block negative sign entirely
-    function cleanCurrencyInput(input) {
-        // Strip everything except numbers and a single decimal point (blocks '-')
-        let val = input.value.replace(/[^0-9.]/g, '');
-        let parts = val.split('.');
-        if (parts.length > 2) {
-            parts.pop();
-            val = parts.join('.');
-        }
-        
-        document.getElementById('amount').value = val || 0;
-        input.value = val;
-        
-        // Remove error state instantly when they start typing a valid number
-        if(parseFloat(val) > 0) {
-            input.classList.remove('is-invalid');
-            document.getElementById('amount_group').classList.remove('invalid-group');
-            document.getElementById('amount_error').style.display = 'none';
-        }
-        
-        calculateAll();
-    }
-
-    function formatCurrencyInput(input) {
-        let val = parseFloat(input.value);
-        if (!isNaN(val) && val > 0) {
-            input.value = val.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        }
-    }
-
-    function unformatCurrencyInput(input) {
-        let val = input.value.replace(/,/g, '');
-        input.value = val;
-    }
 
     function syncDate() {
         let appliedDate = document.getElementById('date_applied').value;
         if (appliedDate) {
-            // Auto correct if they type a date before 2026
-            if(appliedDate < '2026-01-01') {
-                document.getElementById('date_applied').value = '2026-01-01';
-                appliedDate = '2026-01-01';
-            }
             document.getElementById('start_date').value = appliedDate;
-            document.getElementById('date_applied').classList.remove('is-invalid');
             calculateFromDates(); 
         }
     }
 
     function calculateFromDates() {
-        let startEl = document.getElementById('start_date');
-        let endEl = document.getElementById('end_date');
-        
-        if (startEl.value < '2026-01-01') startEl.value = '2026-01-01';
-
-        startEl.classList.remove('is-invalid');
-        endEl.classList.remove('is-invalid');
-
-        let startInput = startEl.value;
-        let endInput = endEl.value;
+        let startInput = document.getElementById('start_date').value;
+        let endInput = document.getElementById('end_date').value;
+        let months = 0;
 
         if (startInput && endInput) {
-            let sParts = startInput.split('-');
-            let eParts = endInput.split('-');
-            
-            let sYear = parseInt(sParts[0]);
-            let sMonth = parseInt(sParts[1]);
-            let sDay = parseInt(sParts[2]);
-            
-            let eYear = parseInt(eParts[0]);
-            let eMonth = parseInt(eParts[1]);
-            let eDay = parseInt(eParts[2]);
+            let start = new Date(startInput);
+            let end = new Date(endInput);
 
-            // Prevent end date from being before/equal to start date
-            if (endInput <= startInput) {
-                document.getElementById('months').value = 1;
-                calculateFromMonths(); 
-                return; 
-            } else {
-                // Pure calendar month calculation (e.g. Feb 2026 to Mar 2026 = 1 month)
-                let months = (eYear - sYear) * 12 + (eMonth - sMonth);
+            if (end >= start) {
+                months = (end.getFullYear() - start.getFullYear()) * 12;
+                months -= start.getMonth();
+                months += end.getMonth();
                 
-                // Adjust if the end day is earlier in the month than the start day
-                // (Unless it's the strict end of the month)
-                if (eDay < sDay) {
-                    let eDaysInMonth = new Date(eYear, eMonth, 0).getDate();
-                    if (eDay < eDaysInMonth) {
-                        months--;
-                    }
-                }
-                
-                if (months < 1) months = 1;
-                if (months > 120) months = 120;
-                
-                document.getElementById('months').value = months;
-                document.getElementById('months').classList.remove('is-invalid');
+                document.getElementById('months').value = months > 0 ? months : 0;
             }
         }
         calculateAll();
@@ -839,82 +645,51 @@
 
     function calculateFromMonths() {
         let startInput = document.getElementById('start_date').value;
-        let monthsField = document.getElementById('months');
-        
-        // Remove non-numbers
-        monthsField.value = monthsField.value.replace(/[^0-9]/g, '');
+        let monthsInput = parseInt(document.getElementById('months').value) || 0;
 
-        if(monthsField.value === "") {
-            calculateAll();
-            return;
-        }
-
-        let monthsInput = parseInt(monthsField.value);
-
-        if (monthsInput > 120) {
-            monthsField.value = 120;
-            monthsInput = 120;
-        }
-
-        if (monthsInput < 1) {
-            monthsField.value = 1;
-            monthsInput = 1;
-        }
-
-        if (startInput && monthsInput >= 1) {
-            let parts = startInput.split('-');
-            let year = parseInt(parts[0]);
-            let month = parseInt(parts[1]);
-            let day = parseInt(parts[2]);
+        if (startInput && monthsInput >= 0) {
+            let start = new Date(startInput);
             
-            // Mathematically precise month addition
-            month += monthsInput;
-            year += Math.floor((month - 1) / 12);
-            month = ((month - 1) % 12) + 1;
+            start.setMonth(start.getMonth() + monthsInput);
             
-            // Catch edge cases like "February 31st" and clamp to "February 28/29th"
-            let daysInMonth = new Date(year, month, 0).getDate();
-            if (day > daysInMonth) day = daysInMonth;
+            let year = start.getFullYear();
+            let month = String(start.getMonth() + 1).padStart(2, '0');
+            let day = String(start.getDate()).padStart(2, '0');
             
-            let endStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            
-            if (endStr < '2026-01-01') endStr = '2026-01-01';
-            
-            document.getElementById('end_date').value = endStr;
-            monthsField.classList.remove('is-invalid');
-            document.getElementById('end_date').classList.remove('is-invalid');
+            document.getElementById('end_date').value = `${year}-${month}-${day}`;
         }
         calculateAll();
     }
 
     function calculateAll() {
-        let amount = Math.max(0, parseFloat(document.getElementById('amount').value) || 0);
-        let months = Math.max(0, parseInt(document.getElementById('months').value) || 0);
-        
-        let interestRate = Math.max(0, parseFloat(document.getElementById('interest_rate_input').value) || 0);
+    let amount = parseFloat(document.getElementById('amount').value) || 0;
+    let months = parseInt(document.getElementById('months').value) || 0;
+    
+    // NEW: Fetch the manual interest rate (defaults to 9 if empty)
+    let interestRate = parseFloat(document.getElementById('interest_rate_input').value) || 0;
 
-        let serviceFee = amount * 0.005;
-        let interest = amount * (interestRate / 100);
-        
-        let surcharge = 0;
-        if (months > 0) {
-            surcharge = amount * 0.0011 * months;
-        }
-
-        document.getElementById('service_fee').value = serviceFee.toFixed(2);
-        document.getElementById('interest').value = interest.toFixed(2);
-        document.getElementById('surcharge').value = surcharge.toFixed(2);
-
-        let net = amount - (serviceFee + surcharge);
-        if(net < 0) net = 0;
-
-        document.getElementById('service_fee_display').value = serviceFee.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('interest_display').value = interest.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('surcharge_display').value = surcharge.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-
-        document.getElementById('net_proceeds_display').value = '₱ ' + net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('net_proceeds_actual').value = net.toFixed(2);
+    let serviceFee = amount * 0.005;
+    
+    // UPDATED: Calculate interest based on the inputted rate
+    let interest = amount * (interestRate / 100);
+    
+    let surcharge = 0;
+    if (months > 0) {
+        surcharge = amount * 0.0011 * months;
     }
+
+    document.getElementById('service_fee').value = serviceFee.toFixed(2);
+    document.getElementById('interest').value = interest.toFixed(2);
+    document.getElementById('surcharge').value = surcharge.toFixed(2);
+
+    // Note: Kept your original Net Amount formula exactly as you wrote it
+    let net = amount - (serviceFee + surcharge);
+    
+    if(net < 0) net = 0;
+
+    document.getElementById('net_proceeds_display').value = '₱ ' + net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    document.getElementById('net_proceeds_actual').value = net.toFixed(2);
+}
 </script>
 @endpush
 @endsection

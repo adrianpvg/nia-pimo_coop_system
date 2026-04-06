@@ -35,6 +35,10 @@ Route::middleware('auth')->group(function () {
         Route::post('/payment', [FinanceController::class, 'addPayment'])->name('finance.payment.store');
         
         Route::get('/export/{type?}', [FinanceController::class, 'export'])->name('finance.export');
+        Route::delete('/payment/{id}', [FinanceController::class, 'deletePayment'])->name('finance.payment.destroy');
+        
+        // NEW: Route to delete an entire loan
+        Route::delete('/loan/{id}', [FinanceController::class, 'destroyLoan'])->name('finance.destroy');
     });
 
     // ==========================================
@@ -49,7 +53,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/update/{id}', [TeamController::class, 'update'])->name('team.update');
         Route::delete('/destroy/{id}', [TeamController::class, 'destroy'])->name('team.destroy');
         
-        // <--- THIS IS THE EDIT: Added Logs Route
+        // Logs Route
         Route::get('/logs', [TeamController::class, 'logs'])->name('team.logs'); 
         
     });
