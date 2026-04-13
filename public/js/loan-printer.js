@@ -33,6 +33,10 @@ function printLoanSchedule() {
         return;
     }
 
+    // Dynamic Banner text: E.g., "REGULAR SALARY LOAN (2026)"
+    let applicationYear = dateApplied !== 'N/A' ? new Date(dateApplied).getFullYear() : new Date().getFullYear();
+    let bannerText = loanType.toUpperCase() + " (" + applicationYear + ")";
+
     // Formatter for currency
     const formatMoney = (amount) => '₱ ' + amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     let currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -54,10 +58,12 @@ function printLoanSchedule() {
         "    <title>Loan Schedule - " + borrower + "</title>",
         "    <style>",
         "        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');",
-        "        body { font-family: 'Inter', sans-serif; padding: 40px; color: #2d3748; margin: 0 auto; max-width: 800px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }",
-        "        .header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #007aff; padding-bottom: 20px; }",
-        "        .header h1 { margin: 0 0 5px 0; color: #1a202c; text-transform: uppercase; letter-spacing: 1px; font-size: 24px; }",
-        "        .header p { margin: 0; color: #718096; font-size: 14px; }",
+        "        body { font-family: 'Inter', sans-serif; padding: 0 40px 40px 40px; color: #2d3748; margin: 0 auto; max-width: 900px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }",
+        
+        "        /* Image Header Styles */",
+        "        .header-image { width: 100%; height: auto; display: block; margin: 0 auto; }",
+        "        .green-banner { background-color: #2da042; color: #ffffff; text-align: center; font-weight: 700; font-size: 16px; padding: 10px; margin-bottom: 30px; letter-spacing: 1px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }",
+        
         "        .grid-container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px; }",
         "        .section-title { font-size: 13px; text-transform: uppercase; color: #a0aec0; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 20px; font-weight: 700; letter-spacing: 1px; }",
         "        .row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 15px; }",
@@ -75,14 +81,16 @@ function printLoanSchedule() {
         "        .sig-line { border-bottom: 1px solid #1a202c; height: 40px; margin-bottom: 8px; }",
         "        .sig-name { font-weight: 700; font-size: 14px; text-transform: uppercase; color: #1a202c; }",
         "        .sig-title { font-size: 12px; color: #718096; }",
+        "        .print-date { text-align: right; font-size: 11px; color: #a0aec0; margin-top: 50px; font-style: italic; }",
         "        @media print { body { padding: 0; } .finance-box { border: 1px solid #cbd5e1; } }",
         "    </style>",
         "</head>",
         "<body>",
-        "    <div class='header'>",
-        "        <h1>Loan Schedule Application</h1>",
-        "        <p>Generated on " + currentDate + "</p>",
-        "    </div>",
+        "    ",
+        "    <img src='/images/NIA_file-header.png' class='header-image' alt='NIA Header' />",
+        "    ",
+        "    <div class='green-banner'>" + bannerText + "</div>",
+        
         "    <div class='grid-container'>",
         "        <div>",
         "            <div class='section-title'>Applicant Profile</div>",
@@ -90,7 +98,7 @@ function printLoanSchedule() {
         "            <div class='row'><span class='label'>Co-Maker</span> <span class='value'>" + coMaker + "</span></div>",
         "            <div class='row'><span class='label'>Office</span> <span class='value'>" + office + "</span></div>",
         "            <div class='row'><span class='label'>Date Applied</span> <span class='value'>" + dateApplied + "</span></div>",
-        "            <div class='row'><span class='label'>Loan Type</span> <span class='value'>" + loanType + "</span></div>",
+        "            <div class='row'><span class='label'>Loan Type</span> <span class='value' style='color: #007aff;'>" + loanType + "</span></div>",
         "            <div class='section-title' style='margin-top: 30px;'>Term Schedule</div>",
         "            <div class='row'><span class='label'>Duration</span> <span class='value'>" + months + " Months</span></div>",
         "            <div class='row'><span class='label'>Payment Start</span> <span class='value'>" + start + "</span></div>",
@@ -139,6 +147,7 @@ function printLoanSchedule() {
         "            <div class='sig-title'>Approved By</div>",
         "        </div>",
         "    </div>",
+        "    <div class='print-date'>Document Generated on: " + currentDate + "</div>",
         "</body>",
         "</html>"
     ];
@@ -147,8 +156,8 @@ function printLoanSchedule() {
     printWindow.document.close();
     printWindow.focus();
     
-    // Slight delay ensures the CSS completely loads before the print dialog appears
+    // Slight delay ensures the CSS and Image completely loads before the print dialog appears
     setTimeout(() => {
         printWindow.print();
-    }, 250);
+    }, 500); // Increased delay slightly to give the image time to load
 }
