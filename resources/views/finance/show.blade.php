@@ -110,11 +110,29 @@
             </div>
         </div>
         
-        <div class="col-md-3 mb-3 mb-md-0 text-md-center border-start border-end" style="border-color: rgba(0,0,0,0.05) !important;">
+       <div class="col-md-3 mb-3 mb-md-0 text-md-center border-start border-end" style="border-color: rgba(0,0,0,0.05) !important;">
             <div class="text-muted small text-uppercase fw-semibold mb-1"><i class="bi bi-tag me-1 text-info"></i> Loan Details</div>
             <h5 class="fw-bold text-dark mb-1">{{ $loan->type }}</h5>
             <p class="small text-muted mb-0">Control No: <span class="fw-semibold text-dark">{{ $loan->control_number }}</span></p>
             <p class="small text-muted mb-0">Granted: {{ \Carbon\Carbon::parse($loan->date_of_application)->format('M d, Y') }}</p>
+            
+            <div class="mt-2 pt-2 border-top" style="border-color: rgba(0,0,0,0.05) !important;">
+                <p class="small text-muted mb-1">Applied Term: <span class="fw-semibold text-dark">{{ $loan->no_of_months }} Months</span></p>
+                <div class="d-flex align-items-center justify-content-center gap-1">
+                    <span class="small text-muted mb-0">Actual Term:</span>
+                    
+                    @if(is_null($loan->actual_months))
+                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-3 py-0 text-dark shadow-sm" style="font-size: 0.75rem; font-weight: 600;" data-bs-toggle="modal" data-bs-target="#actualMonthsModal">
+                            <i class="bi bi-exclamation-circle me-1"></i> Set Now
+                        </button>
+                    @else
+                        <span class="fw-bold text-success" style="font-size: 0.9rem;">{{ $loan->actual_months }} Months</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle px-1 py-0 shadow-none border-0 ms-1" data-bs-toggle="modal" data-bs-target="#actualMonthsModal" title="Update Term">
+                            <i class="bi bi-pencil-fill" style="font-size: 0.75rem;"></i>
+                        </button>
+                    @endif
+                </div>
+            </div>
         </div>
         
         <div class="col-md-4 text-md-end">
@@ -308,7 +326,7 @@
                             
                             <div class="col-md-6 mt-4">
                                 <label class="small text-secondary mb-1 fw-semibold text-primary">Principal Amount <span class="text-danger">*</span></label>
-                                <div class="input-group glass-input" id="payment_group" style="padding: 0; overflow: hidden; border-color: rgba(0, 122, 255, 0.4); box-shadow: 0 4px 10px rgba(0, 122, 255, 0.05);">
+                                <div class="input-group glass-input" id="payment_group" style="padding: 0; overflow: hidden; border-color: rgba(0, 122, 255, 0.4) !important; box-shadow: 0 4px 10px rgba(0, 122, 255, 0.05);">
                                     <span class="input-group-text bg-transparent border-0 text-primary ps-3 pe-2 fw-bold">₱</span>
                                     
                                     <input type="text" id="payment_amount_display" oninput="cleanPaymentCurrencyInput(this)" onblur="formatPaymentCurrencyInput(this)" onfocus="unformatPaymentCurrencyInput(this)" class="form-control bg-transparent border-0 py-2 fw-bold text-primary shadow-none" placeholder="0.00" required>
@@ -321,7 +339,6 @@
                                 <label class="small text-secondary mb-1 fw-semibold">Interest Paid ({{ $loan->interest_rate + 0 }}%)</label>
                                 <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
                                     <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-2">₱</span>
-                                    
                                     <input type="text" id="payment_interest_display" class="form-control bg-transparent border-0 py-2 shadow-none" value="0.00" readonly>
                                     <input type="hidden" name="interest" id="payment_interest" value="0">
                                 </div>
@@ -339,15 +356,94 @@
     </div>
 </div>
 
+<div class="modal fade" id="actualMonthsModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-modal-content border-0">
+            <form action="{{ route('finance.update_actual_months', $loan->id) }}" method="POST" id="actualMonthsForm" novalidate>
+                @csrf
+                @method('PUT')
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <h5 class="modal-title fw-bold text-primary">
+                        <i class="bi bi-calendar3-range me-2"></i> {{ filled($loan->actual_months) ? 'Update Amortization Term' : 'Set Amortization Term' }}
+                    </h5>
+                </div>
+                <div class="modal-body px-4 py-3">
+                    <p class="text-secondary small mb-4">
+                        To accurately generate the amortization schedule, please confirm the <strong>actual timeframe</strong> the borrower will take to pay this loan.
+                    </p>
+                    
+                    @php
+                        // Determine the maximum limit based on the specific loan type
+                        $maxTerm = ($loan->type === 'REGULAR SALARY LOAN') ? 32 : 36;
+                    @endphp
+
+                    <div class="form-inner-panel p-3 text-center">
+                        <label class="small text-secondary mb-2 fw-semibold">Actual Repayment Duration (Months)</label>
+                        
+                        <input type="number" name="actual_months" id="actual_months_input" class="form-control glass-input text-center fw-bold fs-4 text-primary w-50 mx-auto" value="{{ old('actual_months', $loan->actual_months ?? $loan->no_of_months) }}" min="1" max="{{ $maxTerm }}" required>
+                        <div class="invalid-feedback mt-2" id="actual_months_error">
+                            Term cannot exceed {{ $maxTerm }} months for {{ $loan->type }}.
+                        </div>
+                        
+                        @error('actual_months')
+                            <div class="text-danger small mt-2 fw-bold">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 px-4 pb-4 mt-2 d-flex justify-content-between">
+                    <button type="button" class="btn btn-light rounded-pill px-4 shadow-sm text-muted" data-bs-dismiss="modal" style="background: rgba(255,255,255,0.7);">{{ filled($loan->actual_months) ? 'Cancel' : 'Skip for Now' }}</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold">Save Term</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
     const maxPrincipal = {{ $rem_principal }};
 
     $(document).ready(function() { 
-        // Ensure all modals are moved to body to avoid z-index layering issues with glassmorphism
         $('#addPaymentModal').appendTo('body');
         $('#deleteLoanModal').appendTo('body');
         $('.payment-delete-modal').appendTo('body');
+        $('#actualMonthsModal').appendTo('body');
+
+        // Auto-Trigger Actual Months Modal if it is null in the database
+        @if(is_null($loan->actual_months))
+            var myModal = new bootstrap.Modal(document.getElementById('actualMonthsModal'));
+            myModal.show();
+        @endif
+
+        // Validation for the Actual Months Form
+        document.getElementById('actualMonthsForm').addEventListener('submit', function(event) {
+            let isValid = true;
+            let input = document.getElementById('actual_months_input');
+            let val = parseInt(input.value) || 0;
+            let maxTerm = {{ $maxTerm }}; // Pulled dynamically from PHP
+
+            // Check if it violates our specific constraints
+            if (val < 1 || val > maxTerm) {
+                input.classList.add('is-invalid');
+                isValid = false;
+            } else {
+                input.classList.remove('is-invalid');
+            }
+
+            if (!isValid) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        });
+
+        // Dynamic clear of the error state while typing
+        document.getElementById('actual_months_input').addEventListener('input', function() {
+            let val = parseInt(this.value) || 0;
+            let maxTerm = {{ $maxTerm }};
+            if(val >= 1 && val <= maxTerm) {
+                this.classList.remove('is-invalid');
+            }
+        });
 
         // Custom Validations for Payment Form on Submit
         document.getElementById('paymentForm').addEventListener('submit', function(event) {

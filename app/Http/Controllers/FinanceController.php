@@ -132,7 +132,7 @@ class FinanceController extends Controller
             $borrower->update(['co_maker' => strtoupper($request->co_maker)]);
         }
 
-        Loan::create([
+        $loan = Loan::create([
             'borrower_id' => $borrower->id,
             'type' => strtoupper($request->type),
             'control_number' => $control_number,
@@ -146,14 +146,33 @@ class FinanceController extends Controller
             'payment_end' => $request->payment_end,
             'no_of_months' => $request->no_of_months, 
         ]);
-
-        return back()->with('success', 'Application Added! Control No: ' . $control_number);
+        return redirect()->route('finance.show', $loan->id)
+                         ->with('success', 'Application Added! Control No: ' . $control_number);
+        //return back()->with('success', 'Application Added! Control No: ' . $control_number);
     }
 
     public function show($id)
     {
         $loan = Loan::with(['borrower.office', 'payments'])->findOrFail($id);
         return view('finance.show', compact('loan'));
+    }
+
+    public function updateActualMonths(Request $request, $id)
+    {
+        $loan = Loan::findOrFail($id);
+
+        // Dynamically determine the max limit for backend security
+        $maxTerm = ($loan->type === 'REGULAR SALARY LOAN') ? 32 : 36;
+
+        $request->validate([
+            'actual_months' => 'required|integer|min:1|max:' . $maxTerm
+        ]);
+
+        $loan->update([
+            'actual_months' => $request->actual_months
+        ]);
+
+        return back()->with('success', 'Amortization term successfully set to ' . $request->actual_months . ' months.');
     }
 
     // NEW: Delete Entire Loan Application Logic

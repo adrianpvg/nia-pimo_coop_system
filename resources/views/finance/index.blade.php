@@ -281,7 +281,7 @@
                             </td>
                             <td class="fw-medium">₱{{ number_format($loan->amount_granted, 2) }}</td>
                             <td class="text-muted">₱{{ number_format($loan->service_fee, 2) }}</td>
-                            <td class="text-muted">₱{{ number_format($loan->interest_rate, 2) }}</td>
+                            <td class="text-muted">₱{{ number_format($loan->interest_rate*.01*$loan->amount_granted, 2) }}</td>
                             <td class="text-muted">₱{{ number_format($loan->surcharge, 2) }}</td>
                             <td class="fw-bold text-success">₱{{ number_format($loan->net_proceeds, 2) }}</td>
                             <td class="text-muted">{{ $loan->no_of_months }}</td>
@@ -494,10 +494,16 @@
                                     <div class="col-12">
                                         <label class="small text-secondary mb-1 fw-semibold">Office <span class="text-danger">*</span></label>
                                         <select name="office_name" class="form-select glass-input px-3 py-2" required>
+                                            <option value="" disabled selected>Choose an office...</option>
+                                            
                                             @foreach($availableOffices as $off)
                                                 <option value="{{ $off }}">{{ $off }}</option>
                                             @endforeach
+                                            
                                             @if(empty($availableOffices))
+                                                <option value="ASRIS">PIMO</option>
+                                                <option value="ADRIS">PIMO</option>
+                                                <option value="LARIS">PIMO</option>
                                                 <option value="PIMO">PIMO</option>
                                                 <option value="RO1">RO1</option>
                                             @endif

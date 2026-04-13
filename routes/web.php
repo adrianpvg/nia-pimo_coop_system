@@ -39,6 +39,7 @@ Route::middleware('auth')->group(function () {
         
         // NEW: Route to delete an entire loan
         Route::delete('/loan/{id}', [FinanceController::class, 'destroyLoan'])->name('finance.destroy');
+        Route::put('/loan/{id}/actual-months', [FinanceController::class, 'updateActualMonths'])->name('finance.update_actual_months');
     });
 
     // ==========================================
