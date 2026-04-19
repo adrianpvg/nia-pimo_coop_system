@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\LoansExport;
+use App\Services\LoanAmortizationService;
 
 class FinanceController extends Controller
 {
@@ -146,6 +147,8 @@ class FinanceController extends Controller
             'payment_end' => $request->payment_end,
             'no_of_months' => $request->no_of_months, 
         ]);
+
+        
         return redirect()->route('finance.show', $loan->id)
                          ->with('success', 'Application Added! Control No: ' . $control_number);
         //return back()->with('success', 'Application Added! Control No: ' . $control_number);
@@ -153,27 +156,29 @@ class FinanceController extends Controller
 
     public function show($id)
     {
-        $loan = Loan::with(['borrower.office', 'payments'])->findOrFail($id);
+        // ADD 'schedules' into the array here!
+        $loan = Loan::with(['borrower.office', 'payments', 'schedules'])->findOrFail($id);
+        
         return view('finance.show', compact('loan'));
     }
 
-    public function updateActualMonths(Request $request, $id)
-    {
-        $loan = Loan::findOrFail($id);
+    // public function updateActualMonths(Request $request, $id)
+    // {
+    //     $loan = Loan::findOrFail($id);
 
-        // Dynamically determine the max limit for backend security
-        $maxTerm = ($loan->type === 'REGULAR SALARY LOAN') ? 32 : 36;
+    //     // Dynamically determine the max limit for backend security
+    //     $maxTerm = ($loan->type === 'REGULAR SALARY LOAN') ? 32 : 36;
 
-        $request->validate([
-            'actual_months' => 'required|integer|min:1|max:' . $maxTerm
-        ]);
+    //     $request->validate([
+    //         'actual_months' => 'required|integer|min:1|max:' . $maxTerm
+    //     ]);
 
-        $loan->update([
-            'actual_months' => $request->actual_months
-        ]);
+    //     $loan->update([
+    //         'actual_months' => $request->actual_months
+    //     ]);
 
-        return back()->with('success', 'Amortization term successfully set to ' . $request->actual_months . ' months.');
-    }
+    //     return back()->with('success', 'Amortization term successfully set to ' . $request->actual_months . ' months.');
+    // }
 
     // NEW: Delete Entire Loan Application Logic
     public function destroyLoan($id)
@@ -215,6 +220,26 @@ class FinanceController extends Controller
         $payment->delete();
         
         return back()->with('success', 'Payment successfully deleted.');
+    }
+
+    public function updateActualMonths(Request $request, $id, LoanAmortizationService $amortizationService)
+    {
+        $loan = Loan::findOrFail($id);
+
+        $maxTerm = ($loan->type === 'REGULAR SALARY LOAN') ? 32 : 36;
+
+        $request->validate([
+            'actual_months' => 'required|integer|min:1|max:' . $maxTerm
+        ]);
+
+        $loan->update([
+            'actual_months' => $request->actual_months
+        ]);
+
+        // RUN THE MATH ENGINE!
+        $amortizationService->generateSchedule($loan);
+
+        return back()->with('success', 'Amortization schedule successfully generated for ' . $request->actual_months . ' months.');
     }
 
     public function export(Request $request, $type = 'ALL') 

@@ -83,6 +83,35 @@
     .table-hover > tbody > tr:hover > * {
         box-shadow: inset 0 0 0 9999px rgba(0, 122, 255, 0.05);
     }
+
+    /* Apple-style Tabs for Show Page */
+    .apple-tabs {
+        border-bottom: 1px solid rgba(0,0,0,0.1);
+        gap: 1rem;
+    }
+    .apple-tabs .nav-link {
+        border: none;
+        color: var(--text-secondary);
+        font-weight: 500;
+        padding: 0.75rem 0.5rem;
+        background: transparent;
+        position: relative;
+    }
+    .apple-tabs .nav-link.active {
+        color: #2d3748;
+        font-weight: 600;
+        background: transparent;
+    }
+    .apple-tabs .nav-link.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, #007aff, #34c759);
+        border-radius: 3px 3px 0 0;
+    }
 </style>
 
 <div class="d-flex justify-content-between mb-4">
@@ -170,91 +199,157 @@
     </div>
 </div>
 
-<div class="glass-panel p-4 shadow-sm">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h5 class="fw-bold m-0 text-dark"><i class="bi bi-clock-history me-2 text-primary"></i>Payment History</h5>
-        @if($bal > 0)
-        <button class="btn btn-dark shadow-sm px-4" style="border-radius: 12px;" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
-            <i class="bi bi-plus-lg me-2"></i> Add Payment
-        </button>
-        @endif
+<ul class="nav nav-tabs apple-tabs mb-4" id="loanTabs" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#schedule-pane">Amortization Schedule</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#history-pane">Payment History</button>
+    </li>
+</ul>
+
+<div class="tab-content">
+
+    <div class="tab-pane fade show active" id="schedule-pane">
+        <div class="glass-panel p-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="fw-bold m-0 text-dark"><i class="bi bi-calendar3 me-2 text-primary"></i>Amortization Schedule</h5>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover text-center align-middle mb-0">
+                    <thead style="background: rgba(0, 122, 255, 0.05); border-bottom: 1px solid rgba(0, 122, 255, 0.1);">
+                        <tr class="small text-uppercase text-secondary">
+                            <th class="py-3">Seq. No.</th>
+                            <th>Period Covered</th>
+                            <th>Principal</th>
+                            <th>Interest</th>
+                            <th>Total</th>
+                            <th>Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0">
+                        <tr style="background: rgba(0, 0, 0, 0.02);">
+                            <td></td>
+                            <td class="text-start ps-4 fw-bold text-secondary">Principal</td>
+                            <td></td><td></td><td></td>
+                            <td class="fw-bold text-dark">₱ {{ number_format($loan->amount_granted, 2) }}</td>
+                        </tr>
+                        
+                        @forelse($loan->schedules as $index => $sched)
+                            <tr>
+                                <td class="py-3 text-muted">{{ $index + 1 }}.0</td>
+                                <td class="text-start ps-4 fw-semibold text-dark">
+                                    {{ \Carbon\Carbon::parse($sched->period_start)->format('M d') }}-{{ \Carbon\Carbon::parse($sched->period_end)->format('d, Y') }}
+                                </td>
+                                <td class="text-muted">₱ {{ number_format($sched->principal_due, 2) }}</td>
+                                <td class="text-muted">₱ {{ number_format($sched->interest_due, 2) }}</td>
+                                <td class="fw-medium text-primary">₱ {{ number_format($sched->total_due, 2) }}</td>
+                                <td class="fw-bold text-dark">₱ {{ number_format($sched->balance_after, 2) }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="py-5 text-center text-muted">
+                                    <i class="bi bi-exclamation-circle fs-3 d-block mb-2 text-warning"></i>
+                                    Schedule not generated.<br>
+                                    Please set the <strong>Actual Term</strong> above to generate the amortization table.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
-    
-    <div class="table-responsive">
-        <table class="table table-hover text-center align-middle mb-0">
-            <thead style="background: rgba(0, 122, 255, 0.05); border-bottom: 1px solid rgba(0, 122, 255, 0.1);">
-                <tr class="small text-uppercase text-secondary">
-                    <th class="py-3">Date Paid</th>
-                    <th>OR Number</th>
-                    <th>Principal Paid</th>
-                    <th>Interest Paid</th>
-                    <th>Running Balance</th>
-                    <th>Action</th> 
-                </tr>
-            </thead>
-            <tbody class="border-top-0">
-                <tr style="background: rgba(52, 199, 89, 0.05);">
-                    <td colspan="4" class="text-start ps-4 fw-bold text-success">
-                        <i class="bi bi-cash-stack me-2"></i>LOAN GRANTED <span class="text-muted small fw-medium ms-2">(Principal + Interest)</span>
-                    </td>
-                    <td class="fw-bold text-success fs-5">₱ {{ number_format($total_liability, 2) }}</td>
-                    <td></td>
-                </tr>
-                
-                @php $runBal = $total_liability; @endphp
-                @foreach($loan->payments as $pay)
-                    @php $runBal -= ($pay->amount_paid + $pay->interest); @endphp
-                    <tr>
-                        <td class="py-3 text-muted">{{ \Carbon\Carbon::parse($pay->payment_date)->format('M d, Y') }}</td>
-                        <td class="fw-semibold text-dark">{{ $pay->or_number }}</td>
-                        <td class="text-success fw-medium">₱ {{ number_format($pay->amount_paid, 2) }}</td>
-                        <td class="text-muted">₱ {{ number_format($pay->interest, 2) }}</td>
-                        <td class="fw-bold {{ $runBal <= 0 ? 'text-success' : 'text-danger' }}">
-                            @if($runBal <= 0)
-                                <i class="bi bi-check-circle-fill me-1"></i> SETTLED
-                            @else
-                                ₱ {{ number_format($runBal, 2) }}
-                            @endif
-                        </td>
-                        <td>
-                            <button type="button" data-bs-toggle="modal" data-bs-target="#deletePaymentModal{{ $pay->id }}" class="btn btn-sm btn-outline-danger border-0 rounded-circle shadow-sm bg-white" title="Delete Payment">
-                                <i class="bi bi-trash-fill"></i>
-                            </button>
-                        </td>
-                    </tr>
-                    
-                    <div class="modal fade payment-delete-modal" id="deletePaymentModal{{ $pay->id }}" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered">
-                            <div class="modal-content glass-modal-content">
-                                <div class="modal-header border-0 pb-0">
-                                    <h5 class="modal-title fw-bold text-danger">Delete Payment Record</h5>
-                                    <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body text-secondary pb-4 text-start">
-                                    Are you sure you want to delete this payment record (OR: {{ $pay->or_number }}) for <strong>₱ {{ number_format($pay->amount_paid, 2) }}</strong>?
-                                    <br><br>
-                                    This action cannot be undone and the balance will be recalculated.
-                                </div>
-                                <div class="modal-footer border-0 pt-0">
-                                    <button type="button" class="btn btn-light glass-panel" data-bs-dismiss="modal">Cancel</button>
-                                    <form action="{{ route('finance.payment.destroy', $pay->id) }}" method="POST" class="m-0">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-danger" style="border-radius: 8px;">Delete Payment</button>
-                                    </form>
+
+    <div class="tab-pane fade" id="history-pane">
+        <div class="glass-panel p-4 shadow-sm">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="fw-bold m-0 text-dark"><i class="bi bi-clock-history me-2 text-primary"></i>Payment History</h5>
+                @if($bal > 0)
+                <button class="btn btn-dark shadow-sm px-4" style="border-radius: 12px;" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                    <i class="bi bi-plus-lg me-2"></i> Add Payment
+                </button>
+                @endif
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover text-center align-middle mb-0">
+                    <thead style="background: rgba(0, 122, 255, 0.05); border-bottom: 1px solid rgba(0, 122, 255, 0.1);">
+                        <tr class="small text-uppercase text-secondary">
+                            <th class="py-3">Date Paid</th>
+                            <th>OR Number</th>
+                            <th>Principal Paid</th>
+                            <th>Interest Paid</th>
+                            <th>Running Balance</th>
+                            <th>Action</th> 
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0">
+                        <tr style="background: rgba(52, 199, 89, 0.05);">
+                            <td colspan="4" class="text-start ps-4 fw-bold text-success">
+                                <i class="bi bi-cash-stack me-2"></i>LOAN GRANTED <span class="text-muted small fw-medium ms-2">(Principal + Interest)</span>
+                            </td>
+                            <td class="fw-bold text-success fs-5">₱ {{ number_format($total_liability, 2) }}</td>
+                            <td></td>
+                        </tr>
+                        
+                        @php $runBal = $total_liability; @endphp
+                        @foreach($loan->payments as $pay)
+                            @php $runBal -= ($pay->amount_paid + $pay->interest); @endphp
+                            <tr>
+                                <td class="py-3 text-muted">{{ \Carbon\Carbon::parse($pay->payment_date)->format('M d, Y') }}</td>
+                                <td class="fw-semibold text-dark">{{ $pay->or_number }}</td>
+                                <td class="text-success fw-medium">₱ {{ number_format($pay->amount_paid, 2) }}</td>
+                                <td class="text-muted">₱ {{ number_format($pay->interest, 2) }}</td>
+                                <td class="fw-bold {{ $runBal <= 0 ? 'text-success' : 'text-danger' }}">
+                                    @if($runBal <= 0)
+                                        <i class="bi bi-check-circle-fill me-1"></i> SETTLED
+                                    @else
+                                        ₱ {{ number_format($runBal, 2) }}
+                                    @endif
+                                </td>
+                                <td>
+                                    <button type="button" data-bs-toggle="modal" data-bs-target="#deletePaymentModal{{ $pay->id }}" class="btn btn-sm btn-outline-danger border-0 rounded-circle shadow-sm bg-white" title="Delete Payment">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            
+                            <div class="modal fade payment-delete-modal" id="deletePaymentModal{{ $pay->id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content glass-modal-content">
+                                        <div class="modal-header border-0 pb-0">
+                                            <h5 class="modal-title fw-bold text-danger">Delete Payment Record</h5>
+                                            <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body text-secondary pb-4 text-start">
+                                            Are you sure you want to delete this payment record (OR: {{ $pay->or_number }}) for <strong>₱ {{ number_format($pay->amount_paid, 2) }}</strong>?
+                                            <br><br>
+                                            This action cannot be undone and the balance will be recalculated.
+                                        </div>
+                                        <div class="modal-footer border-0 pt-0">
+                                            <button type="button" class="btn btn-light glass-panel" data-bs-dismiss="modal">Cancel</button>
+                                            <form action="{{ route('finance.payment.destroy', $pay->id) }}" method="POST" class="m-0">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-danger" style="border-radius: 8px;">Delete Payment</button>
+                                            </form>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                @endforeach
+                        @endforeach
 
-                @if($loan->payments->isEmpty())
-                    <tr>
-                        <td colspan="6" class="py-4 text-muted small">No payments have been recorded yet.</td>
-                    </tr>
-                @endif
-            </tbody>
-        </table>
+                        @if($loan->payments->isEmpty())
+                            <tr>
+                                <td colspan="6" class="py-4 text-muted small">No payments have been recorded yet.</td>
+                            </tr>
+                        @endif
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -373,7 +468,6 @@
                     </p>
                     
                     @php
-                        // Determine the maximum limit based on the specific loan type
                         $maxTerm = ($loan->type === 'REGULAR SALARY LOAN') ? 32 : 36;
                     @endphp
 
@@ -409,20 +503,17 @@
         $('.payment-delete-modal').appendTo('body');
         $('#actualMonthsModal').appendTo('body');
 
-        // Auto-Trigger Actual Months Modal if it is null in the database
         @if(is_null($loan->actual_months))
             var myModal = new bootstrap.Modal(document.getElementById('actualMonthsModal'));
             myModal.show();
         @endif
 
-        // Validation for the Actual Months Form
         document.getElementById('actualMonthsForm').addEventListener('submit', function(event) {
             let isValid = true;
             let input = document.getElementById('actual_months_input');
             let val = parseInt(input.value) || 0;
-            let maxTerm = {{ $maxTerm }}; // Pulled dynamically from PHP
+            let maxTerm = {{ $maxTerm }}; 
 
-            // Check if it violates our specific constraints
             if (val < 1 || val > maxTerm) {
                 input.classList.add('is-invalid');
                 isValid = false;
@@ -436,7 +527,6 @@
             }
         });
 
-        // Dynamic clear of the error state while typing
         document.getElementById('actual_months_input').addEventListener('input', function() {
             let val = parseInt(this.value) || 0;
             let maxTerm = {{ $maxTerm }};
@@ -445,7 +535,6 @@
             }
         });
 
-        // Custom Validations for Payment Form on Submit
         document.getElementById('paymentForm').addEventListener('submit', function(event) {
             let isValid = true;
             
@@ -497,7 +586,6 @@
         }, false);
     });
 
-    // Formatting Functions for Payment Inputs
     function cleanPaymentCurrencyInput(input) {
         let val = input.value.replace(/[^0-9.]/g, '');
         let parts = val.split('.');

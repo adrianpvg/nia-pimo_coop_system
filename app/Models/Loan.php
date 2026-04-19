@@ -25,4 +25,6 @@ class Loan extends Model {
     public function getBalanceAttribute() {
         return $this->amount_granted - $this->payments()->sum('amount_paid');
     }
+
+    public function schedules() { return $this->hasMany(\App\Models\LoanSchedule::class); }
 }
