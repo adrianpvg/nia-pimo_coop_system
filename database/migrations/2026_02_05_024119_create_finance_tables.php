@@ -30,6 +30,7 @@ return new class extends Migration {
             
             $table->decimal('amount_granted', 15, 2);
             $table->decimal('service_fee', 15, 2)->default(0);
+            $table->decimal('base_interest', 15, 2)->default(1.5);
             $table->decimal('interest_rate', 15, 2)->default(0); 
             $table->decimal('surcharge', 15, 2)->default(0);
             $table->decimal('net_proceeds', 15, 2);
@@ -62,6 +63,12 @@ return new class extends Migration {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('loan_id')->constrained()->cascadeOnDelete();
+            
+            // NEW: Two separate columns for audit trailing
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete(); 
+            
+            $table->string('period_covered'); 
             $table->decimal('amount_paid', 15, 2);
             $table->decimal('interest', 15, 2)->default(0);
             $table->string('or_number')->nullable();

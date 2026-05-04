@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Http; // Added to make API calls to Google
+use Illuminate\Support\Facades\Http;
+use Illuminate\Auth\Events\Registered; // <-- ADD THIS
 use App\Models\User;
 
 class AuthController extends Controller
@@ -15,65 +16,77 @@ class AuthController extends Controller
         if (Auth::check()) {
             return redirect()->route('finance.loans');
         }
-        return view('auth.login');
+
+        return response()->view('auth.login')
+            ->header('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', 'Sat, 01 Jan 2000 00:00:00 GMT');
+    }
+
+    // NEW: Render the specific Register Page
+    public function registerView()
+    {
+        if (Auth::check()) {
+            return redirect()->route('finance.loans');
+        }
+        return view('auth.register');
     }
 
     public function register(Request $request)
     {
-        // 1. Validate the form inputs, including checking if the captcha was checked
         $fields = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6',
-            'g-recaptcha-response' => 'required' // Ensure they clicked the box
-        ], [
-            'name.required' => 'Please enter your full name.',
-            'email.required' => 'An email address is required.',
-            'email.unique' => 'This email is already registered.',
-            'password.min' => 'Password must be at least 6 characters.',
-            'g-recaptcha-response.required' => 'Please complete the reCAPTCHA verification.'
+            'password' => 'required|string|min:6|confirmed',
+            'g-recaptcha-response' => 'required'
         ]);
 
-        // 2. Ping Google's servers to verify the token is legitimate
         if (!$this->verifyRecaptcha($request->input('g-recaptcha-response'), $request->ip())) {
-            return back()
-                ->withErrors(['g-recaptcha-response' => 'reCAPTCHA verification failed. Please try again.'])
-                ->withInput();
+            return back()->withErrors(['g-recaptcha-response' => 'reCAPTCHA verification failed.'])->withInput();
         }
 
-        User::create([
+        $user = User::create([
             'name' => $fields['name'],
             'email' => $fields['email'],
             'password' => Hash::make($fields['password']),
+            'is_active' => false, 
         ]);
 
-        return redirect()->route('login')->with('success', 'Account created successfully! Please sign in.');
+        // TRIGGER THE VERIFICATION EMAIL
+        event(new Registered($user));
+
+        return redirect()->route('login')->with('success', 'Account created! Please check your email to verify your address. Note: An administrator must approve your account before you can log in.');
     }
 
     public function login(Request $request)
     {
-        // 1. Validate the form inputs
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
-            'g-recaptcha-response' => 'required' // Ensure they clicked the box
-        ], [
-            'email.required' => 'Email is required to login.',
-            'password.required' => 'Password is required to login.',
-            'g-recaptcha-response.required' => 'Please complete the reCAPTCHA verification.'
+            'g-recaptcha-response' => 'required'
         ]);
 
-        // 2. Ping Google's servers to verify the token is legitimate
         if (!$this->verifyRecaptcha($request->input('g-recaptcha-response'), $request->ip())) {
-            return back()
-                ->withErrors(['g-recaptcha-response' => 'reCAPTCHA verification failed. Please try again.'])
-                ->withInput();
+            return back()->withErrors(['g-recaptcha-response' => 'reCAPTCHA verification failed.'])->withInput();
         }
 
-        // 3. Attempt login using ONLY the email and password (ignoring the recaptcha token)
         $credentials = $request->only('email', 'password');
 
         if (Auth::attempt($credentials)) {
+            $user = Auth::user();
+
+            // CHECK 1: Is Email Verified?
+            if (!$user->hasVerifiedEmail()) {
+                Auth::logout();
+                return back()->withErrors(['email' => 'You must verify your email address before logging in. Please check your inbox.'])->onlyInput('email');
+            }
+
+            // CHECK 2: Is Admin Approved? (Admins bypass this check)
+            if (!$user->is_active && $user->type !== 'admin') {
+                Auth::logout();
+                return back()->withErrors(['email' => 'Your account is verified but is currently pending Administrator approval.'])->onlyInput('email');
+            }
+
             $request->session()->regenerate();
             return redirect()->route('finance.loans');
         }
@@ -91,9 +104,6 @@ class AuthController extends Controller
         return redirect('/');
     }
 
-    /**
-     * Helper function to verify the reCAPTCHA response with Google
-     */
     private function verifyRecaptcha($token, $ip)
     {
         $response = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
@@ -101,8 +111,6 @@ class AuthController extends Controller
             'response' => $token,
             'remoteip' => $ip
         ]);
-
-        // Returns true if Google says the token is valid and not a bot
         return $response->json('success');
     }
 }

@@ -183,6 +183,8 @@
         font-weight: 700;
         color: var(--text-primary);
     }
+
+    
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
@@ -556,26 +558,34 @@
                                     </div>
                                     <div class="col-md-4">
                                         <label class="small text-secondary mb-1 fw-semibold text-primary">Duration (Months) <i class="bi bi-pencil-square ms-1 small"></i></label>
-                                        <input type="number" name="no_of_months" id="months" class="form-control glass-input px-3 py-2 fw-bold text-center border-primary" style="background: rgba(0, 122, 255, 0.05) !important;" oninput="calculateFromMonths()" min="1" max="120" step="1" required>
-                                        <div class="invalid-feedback">Enter a valid integer (1 to 120).</div>
+                                        <input type="number" name="no_of_months" id="months" class="form-control glass-input px-3 py-2 fw-bold text-center border-primary" style="background: rgba(0, 122, 255, 0.05) !important;" oninput="calculateFromMonths()" min="1" max="36" step="1" required>
+                                        <div class="invalid-feedback">Enter a valid integer (1 to 36).</div>
                                     </div>
 
-                                    <div class="col-md-3 mt-3">
+                                    <!-- <div class="col-md-3 mt-3">
                                         <label class="small text-secondary mb-1 fw-semibold">Service Fee (0.5%)</label>
                                         <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
                                             <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
                                             <input type="text" id="service_fee_display" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
                                             <input type="hidden" name="service_fee" id="service_fee">
                                         </div>
-                                    </div>
+                                    </div> -->
 
-                                    <div class="col-md-3 mt-3">
+                                    <!-- <div class="col-md-3 mt-3">
                                         <label class="small text-secondary mb-1 fw-semibold text-dark">Interest Rate (%)</label>
                                         <div class="input-group glass-input" style="padding: 0; overflow: hidden; border-color: rgba(0,0,0,0.1);">
                                             <input type="number" step="0.01" id="interest_rate_input" name="interest_rate" class="form-control bg-transparent border-0 py-2 shadow-none text-center fw-bold" value="9" min="0" oninput="calculateAll()" required>
                                             <span class="input-group-text bg-transparent border-0 text-muted ps-2 pe-3">%</span>
                                         </div>
                                         <div class="invalid-feedback">Enter a valid rate.</div>
+                                    </div> -->
+
+                                    <!-- <div class="col-md-3 mt-3">
+                                        <label class="small text-secondary mb-1 fw-semibold text-dark">Interest Rate (%)</label>
+                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
+                                            <input type="number" step="0.01" id="interest_rate_input" name="interest_rate" class="form-control bg-transparent border-0 py-2 shadow-none text-center fw-bold" value="0" readonly required>
+                                            <span class="input-group-text bg-transparent border-0 text-muted ps-2 pe-3">%</span>
+                                        </div>
                                     </div>
 
                                     <div class="col-md-3 mt-3">
@@ -594,15 +604,62 @@
                                             <input type="text" id="surcharge_display" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
                                             <input type="hidden" name="surcharge" id="surcharge">
                                         </div>
+                                    </div> -->
+                                    <div class="col-md-2 mt-3">
+                                        <label class="small text-secondary mb-1 fw-semibold">Service <small>(0.5%)</small></label>
+                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
+                                            <span class="input-group-text bg-transparent border-0 text-muted ps-2 pe-1 small">₱</span>
+                                            <input type="text" id="service_fee_display" class="form-control bg-transparent border-0 py-2 px-1 shadow-none" readonly>
+                                            <input type="hidden" name="service_fee" id="service_fee">
+                                        </div>
                                     </div>
 
-                                    <div class="col-12 mt-3">
+                                    <div class="col-md-2 mt-3">
+                                        <label class="small text-secondary mb-1 fw-semibold text-dark">Base Interest</label>
+                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; border-color: rgba(0,0,0,0.1);">
+                                            <input type="number" step="0.01" name="base_interest" id="interest_rate_input" class="form-control bg-transparent border-0 py-2 px-2 shadow-none text-center fw-bold" value="1.5" min="0" oninput="calculateAll()" required>
+                                            <span class="input-group-text bg-transparent border-0 text-muted ps-1 pe-3">%</span>
+                                        </div>
+                                        <div class="invalid-feedback">Enter a valid rate.</div>
+                                    </div>
+
+                                    <div class="col-md-2 mt-3">
+                                        <label class="small text-secondary mb-1 fw-semibold text-primary">Interest Rate</label>
+                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
+                                            <input type="text" name="interest_rate" id="total_rate_display" class="form-control bg-transparent border-0 py-2 px-1 shadow-none text-center fw-bold text-primary" readonly>
+                                            <span class="input-group-text bg-transparent border-0 text-primary ps-1 pe-2">%</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-3 mt-3">
+                                        <label class="small text-secondary mb-1 fw-semibold">Interest Amount</label>
+                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
+                                            <span class="input-group-text bg-transparent border-0 text-muted ps-2 pe-1 small">₱</span>
+                                            <input type="text" id="interest_display" class="form-control bg-transparent border-0 py-2 px-1 shadow-none fw-bold text-dark" readonly>
+                                            <input type="hidden" name="interest" id="interest">
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-3 mt-3">
+                                        <label class="small text-secondary mb-1 fw-semibold">Surcharge</label>
+                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
+                                            <span class="input-group-text bg-transparent border-0 text-muted ps-2 pe-1 small">₱</span>
+                                            <input type="text" id="surcharge_display" class="form-control bg-transparent border-0 py-2 px-1 shadow-none" readonly>
+                                            <input type="hidden" name="surcharge" id="surcharge">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mt-3">
                                         <div class="net-proceeds-panel p-2 px-3 d-flex justify-content-between align-items-center">
                                             <div class="text-dark fw-bold" style="font-size: 0.95rem;">Net Amount</div>
-                                            
                                             <input type="text" id="net_proceeds_display" class="form-control-plaintext text-end fw-bold text-success p-0 w-100 bg-transparent" style="font-size: 1.4rem;" readonly value="₱ 0.00">
                                             <input type="hidden" name="net_proceeds" id="net_proceeds_actual" value="0">
-                                            
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mt-3">
+                                        <div class="net-proceeds-panel p-2 px-3 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, rgba(0, 122, 255, 0.15), rgba(0, 122, 255, 0.05)); border: 2px solid rgba(0, 122, 255, 0.4); border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 122, 255, 0.1);">
+                                            <div class="text-dark fw-bold" style="font-size: 0.95rem;">Total to Pay</div>
+                                            <input type="text" id="total_pay_display" class="form-control-plaintext text-end fw-bold text-primary p-0 w-100 bg-transparent" style="font-size: 1.4rem;" readonly value="₱ 0.00">
                                         </div>
                                     </div>
 
@@ -857,9 +914,9 @@
 
         let monthsInput = parseInt(monthsField.value);
 
-        if (monthsInput > 120) {
-            monthsField.value = 120;
-            monthsInput = 120;
+        if (monthsInput > 36) {
+            monthsField.value = 36;
+            monthsInput = 36;
         }
 
         if (monthsInput < 1) {
@@ -897,11 +954,42 @@
         let amount = Math.max(0, parseFloat(document.getElementById('amount').value) || 0);
         let months = Math.max(0, parseInt(document.getElementById('months').value) || 0);
         
-        let interestRate = Math.max(0, parseFloat(document.getElementById('interest_rate_input').value) || 0);
+        let monthlyRatePercentage = Math.max(0, parseFloat(document.getElementById('interest_rate_input').value) || 0);
+        let monthlyRate = monthlyRatePercentage / 100; 
 
         let serviceFee = amount * 0.005;
-        let interest = amount * (interestRate / 100);
         
+        let totalExpectedInterest = 0;
+        let totalPeriods = months * 2; 
+        let halfMonthRate = monthlyRate / 2;
+        
+        if (amount > 0 && totalPeriods > 0) {
+            let basePrincipalDue = amount / totalPeriods;
+            let runningBalance = amount;
+            let monthlyBalance = amount; 
+
+            for (let i = 1; i <= totalPeriods; i++) {
+                let isFirstHalf = (i % 2 !== 0);
+
+                let interestDue = monthlyBalance * halfMonthRate;
+                totalExpectedInterest += interestDue;
+                runningBalance -= basePrincipalDue;
+
+                if (!isFirstHalf) {
+                    monthlyBalance = runningBalance;
+                }
+            }
+        }
+        
+        let interest = totalExpectedInterest;
+
+        let effectiveRate = 0;
+        if (amount > 0) {
+            effectiveRate = (interest / amount) * 100;
+        }
+        
+        document.getElementById('total_rate_display').value = effectiveRate.toFixed(2);
+
         let surcharge = 0;
         if (months > 0) {
             surcharge = amount * 0.0011 * months;
@@ -911,8 +999,11 @@
         document.getElementById('interest').value = interest.toFixed(2);
         document.getElementById('surcharge').value = surcharge.toFixed(2);
 
-        let net = amount - (serviceFee + surcharge);
+        let net = amount - (serviceFee + surcharge + interest); 
         if(net < 0) net = 0;
+
+        // NEW: Calculate Total to Pay (Principal + Interest)
+        let totalToPay = amount + interest;
 
         document.getElementById('service_fee_display').value = serviceFee.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('interest_display').value = interest.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -920,7 +1011,13 @@
 
         document.getElementById('net_proceeds_display').value = '₱ ' + net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('net_proceeds_actual').value = net.toFixed(2);
+
+        // NEW: Display Total to Pay
+        document.getElementById('total_pay_display').value = '₱ ' + totalToPay.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
+
+    // PASTE THIS RIGHT BELOW calculateAll()
+    // 
 </script>
 @endpush
 @endsection

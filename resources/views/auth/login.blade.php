@@ -149,7 +149,7 @@
                 </form>
 
                 <p class="mt-8 text-center text-gray-600 text-sm font-medium">
-                    Don't have an account? Contact System Administrator
+                    Don't have an account? <a href="{{ route('register') }}" class="text-[#007aff] font-semibold hover:underline transition-all">Sign Up</a>
                 </p>
             </div>
 

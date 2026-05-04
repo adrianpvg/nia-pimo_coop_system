@@ -365,5 +365,6 @@
     </script>
     
     @stack('scripts')
+    @stack('modals')
 </body>
 </html>

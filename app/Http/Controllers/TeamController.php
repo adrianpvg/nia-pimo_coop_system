@@ -4,10 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB; // <--- THIS IS THE EDIT: Needed for querying the sessions table
-use Carbon\Carbon; // <--- THIS IS THE EDIT: Needed to format timestamps
+use Illuminate\Support\Facades\DB; 
+use Carbon\Carbon; 
 
 class TeamController extends Controller
 {
@@ -50,13 +51,15 @@ class TeamController extends Controller
             $request->suffix
         ];
         
-        $fullName = implode(' ', array_filter($nameParts));
+        $fullName = Str::title(implode(' ', array_filter($nameParts)));
 
         User::create([
             'name' => $fullName,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'type' => $request->type,
+            'is_active' => true, // <-- EDIT: Auto-approve accounts created by Admins
+            'email_verified_at' => now(), // <-- EDIT: Auto-verify emails for Admin-created accounts
         ]);
 
         return redirect()->route('team.index')->with('success', 'New team member account created successfully!');
@@ -72,9 +75,92 @@ class TeamController extends Controller
     }
 
     /**
+     * Update the specified team member in storage.
+     */
+    public function update(Request $request, $id)
+    {
+        // Extra security: Ensure only admins can trigger this via direct URL
+        if (Auth::user()->type !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $user = User::findOrFail($id);
+
+        // Validate the incoming data
+        $request->validate([
+            'name' => 'required|string|max:255',
+            // Ignore the current user's email during the unique check
+            'email' => 'required|email|unique:users,email,' . $user->id, 
+            'type' => 'required|in:admin,member',
+            'password' => 'nullable|string|min:6|confirmed', // Nullable because it's optional
+        ]);
+
+        // Update the basic info
+        $user->name = $request->name;
+        $user->email = $request->email;
+        $user->type = $request->type;
+
+        // Check if the user filled out the password field; only update if they did
+        if ($request->filled('password')) {
+            $user->password = Hash::make($request->password);
+        }
+
+        $user->save();
+
+        return redirect()->route('team.index')->with('success', 'Team member updated successfully!');
+    }
+
+    // ==========================================
+    // NEW EDIT: TOGGLE ACCOUNT ACTIVATION
+    // ==========================================
+    public function toggleActive($id)
+    {
+        // Extra security
+        if (Auth::user()->type !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $user = User::findOrFail($id);
+
+        // Prevent the admin from accidentally locking themselves out
+        if (Auth::id() === $user->id) {
+            return redirect()->back()->with('error', 'Action denied: You cannot deactivate your own account.');
+        }
+
+        // Flip the boolean status
+        $user->is_active = !$user->is_active;
+        $user->save();
+
+        $statusMessage = $user->is_active ? 'approved and activated' : 'deactivated';
+
+        return redirect()->back()->with('success', "Account for {$user->name} has been successfully {$statusMessage}.");
+    }
+
+    /**
+     * Remove the specified team member from storage.
+     */
+    public function destroy($id)
+    {
+        // Extra security: Ensure only admins can trigger this via direct URL
+        if (Auth::user()->type !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $user = User::findOrFail($id);
+
+        // Prevent the admin from accidentally deleting themselves
+        if (Auth::id() === $user->id) {
+            return redirect()->route('team.index')->with('error', 'Action denied: You cannot delete your own account.');
+        }
+
+        $user->delete();
+
+        return redirect()->route('team.index')->with('success', 'Team member permanently deleted.');
+    }
+
+    /**
      * Display system logs (Active sessions) - ADMIN ONLY
      */
-    // <--- THIS IS THE EDIT: Added the Logs method
     public function logs()
     {
         // Extra security layer: Kick them out if they type the URL manually and aren't an admin

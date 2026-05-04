@@ -10,6 +10,7 @@ class Loan extends Model {
         'date_of_application',
         'amount_granted', 
         'service_fee',
+        'base_interest',
         'interest_rate',
         'surcharge',
         'net_proceeds',

@@ -97,6 +97,7 @@ class FinanceController extends Controller
             'payment_end' => 'required|date|after_or_equal:payment_start',
             'no_of_months' => 'required|integer|min:1|max:120',
             'amount_granted' => 'required|numeric|min:0',
+            'base_interest' => 'required|numeric|min:0',
             'interest_rate' => 'required|numeric|min:0',
         ]);
 
@@ -140,6 +141,7 @@ class FinanceController extends Controller
             'date_of_application' => $request->date_of_application,
             'amount_granted' => $request->amount_granted,
             'service_fee' => $request->service_fee ?? 0,
+            'base_interest' => $request->base_interest ?? 0,
             'interest_rate' => $request->interest_rate ?? 0, 
             'surcharge' => $request->surcharge ?? 0,
             'net_proceeds' => $request->net_proceeds,
@@ -199,19 +201,58 @@ class FinanceController extends Controller
     {
         $request->validate([
             'loan_id' => 'required|exists:loans,id',
-            'amount_paid' => 'required|numeric|min:0.01',
+            'period_covered' => 'required|string',
             'or_number' => 'required|string',
             'payment_date' => 'required|date',
         ]);
 
-        Payment::create([
-            'loan_id' => $request->loan_id,
-            'amount_paid' => $request->amount_paid,
-            'interest' => $request->interest ?? 0,
+        $loan = \App\Models\Loan::with('schedules')->findOrFail($request->loan_id);
+
+        // Security Check 1: Ensure this month hasn't already been paid
+        if ($loan->payments()->where('period_covered', $request->period_covered)->exists()) {
+            return back()->withErrors(['period_covered' => 'This month has already been paid.']);
+        }
+
+        // Get the specific schedule rows for the selected month (combines the 1-15 and 16-EOM periods)
+        $schedules = $loan->schedules->filter(function ($sched) use ($request) {
+            return \Carbon\Carbon::parse($sched->period_end)->format('Y-m') === $request->period_covered;
+        });
+
+        if ($schedules->isEmpty()) {
+            return back()->withErrors(['period_covered' => 'Invalid schedule period selected.']);
+        }
+
+        // Automate the calculation securely on the backend
+        $totalPrincipal = $schedules->sum('principal_due');
+        $totalInterest = $schedules->sum('interest_due');
+
+        \App\Models\Payment::create([
+            'loan_id' => $loan->id,
+            'created_by' => auth()->id(), // ONLY logs the creator
+            'period_covered' => $request->period_covered,
+            'amount_paid' => $totalPrincipal,
+            'interest' => $totalInterest,
             'or_number' => $request->or_number,
             'payment_date' => $request->payment_date,
         ]);
-        return back()->with('success', 'Payment Recorded!');
+
+        return back()->with('success', 'Payment Recorded Successfully!');
+    }
+
+    public function updatePayment(Request $request, $id)
+    {
+        $request->validate([
+            'or_number' => 'required|string|max:255',
+        ]);
+
+        $payment = Payment::findOrFail($id);
+        
+        $payment->update([
+            'or_number' => $request->or_number,
+            'updated_by' => auth()->id(), // ONLY logs who updated it
+        ]);
+
+        return back()->with('success', 'Payment OR Number successfully updated.');
     }
 
     public function deletePayment($id)
@@ -222,24 +263,28 @@ class FinanceController extends Controller
         return back()->with('success', 'Payment successfully deleted.');
     }
 
-    public function updateActualMonths(Request $request, $id, LoanAmortizationService $amortizationService)
+    public function updateActualMonths(Request $request, $id, \App\Services\LoanAmortizationService $amortizationService)
     {
         $loan = Loan::findOrFail($id);
 
-        $maxTerm = ($loan->type === 'REGULAR SALARY LOAN') ? 32 : 36;
+        $maxTerm = ($loan->type === 'REGULAR SALARY LOAN') ? 36 : 36;
 
         $request->validate([
             'actual_months' => 'required|integer|min:1|max:' . $maxTerm
         ]);
 
+        // CRITICAL UPDATE: Wipe old payments to prevent mathematical corruption
+        // Because the schedule is changing, old payments tied to old periods are now invalid.
+        $loan->payments()->delete();
+
         $loan->update([
-            'actual_months' => $request->actual_months
+            'actual_months' => $request->actual_months,
         ]);
 
         // RUN THE MATH ENGINE!
         $amortizationService->generateSchedule($loan);
 
-        return back()->with('success', 'Amortization schedule successfully generated for ' . $request->actual_months . ' months.');
+        return back()->with('success', 'Amortization term updated. All previous payment records have been reset to match the new schedule.');
     }
 
     public function export(Request $request, $type = 'ALL') 
@@ -252,5 +297,15 @@ class FinanceController extends Controller
             : strtolower(str_replace(' ', '_', $type)) . "_{$year}_summary.xlsx";
 
         return Excel::download(new LoansExport($type, $year, $officeFilter), $filename);
+    }
+
+    public function exportSched($id) 
+    {
+        $loan = Loan::with(['borrower.office', 'schedules'])->findOrFail($id);
+        
+        $date = Carbon::parse($loan->date_of_application)->format('M d, Y');
+        $filename = "{$loan->borrower->name} - {$date} Schedule.xlsx";
+
+        return Excel::download(new \App\Exports\SchedExport($loan), $filename);
     }
 }

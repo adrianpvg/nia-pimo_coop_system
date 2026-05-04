@@ -11,6 +11,7 @@
         border: 1px solid rgba(255, 255, 255, 0.8);
         background: linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,255,255,0.6));
         position: relative; 
+        overflow: visible !important; /* CRITICAL: Prevents the dropdown from being clipped */
     }
     
     .user-card:hover {
@@ -119,16 +120,19 @@
         color: #ff3b30 !important;
     }
 
+    .glass-dropdown .dropdown-item.text-warning:hover {
+        background-color: rgba(255, 193, 7, 0.08);
+        color: #d39e00 !important;
+    }
+    
+    .glass-dropdown .dropdown-item.text-success:hover {
+        background-color: rgba(40, 167, 69, 0.08);
+        color: #28a745 !important;
+    }
+
     /* =========================================
        MODAL STYLING (Pushed Glassmorphism)
        ========================================= */
-    .modal-backdrop.show {
-        opacity: 1 !important; 
-        background: rgba(0, 0, 0, 0.15) !important; 
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-    }
-
     .glass-modal-content {
         background: rgba(255, 255, 255, 0.65) !important; 
         backdrop-filter: blur(30px);
@@ -162,6 +166,18 @@
         transition: color 0.2s;
     }
     .toggle-password:hover { color: #007aff; }
+
+    /* Fix for Kebab Menu Stacking Context */
+    .user-item {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .user-item:hover, .user-item:focus-within {
+        z-index: 50; /* Forces the active card to the front so the dropdown isn't buried */
+    }
+    
+    
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -178,13 +194,6 @@
         @endif
     </div>
 </div>
-
-@if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show glass-panel border-success" style="background: rgba(40, 167, 69, 0.1);">
-        {{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
 
 <div class="row mb-4">
     <div class="col-md-6 col-lg-4">
@@ -212,6 +221,19 @@
                     </li>
                     
                     @if(Auth::check() && Auth::user()->type === 'admin')
+                        <li>
+                            <form action="{{ route('team.toggle', $user->id) }}" method="POST" class="m-0 p-0">
+                                @csrf
+                                @method('PATCH')
+                                <button type="submit" class="dropdown-item {{ $user->is_active ? 'text-warning' : 'text-success' }}">
+                                    @if($user->is_active)
+                                        <i class="bi bi-pause-circle me-3"></i> Suspend Access
+                                    @else
+                                        <i class="bi bi-check-circle me-3"></i> Approve Account
+                                    @endif
+                                </button>
+                            </form>
+                        </li>
                         <li>
                             <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#editUserModal{{ $user->id }}">
                                 <i class="bi bi-pencil me-3 text-warning"></i> Edit Account
@@ -242,16 +264,31 @@
                     <h5 class="fw-bold mb-0 text-truncate searchable-name text-dark">{{ $user->name }}</h5>
                     <p class="text-muted small mb-2 text-truncate">{{ $user->email }}</p>
                     
-                    <span class="badge {{ $user->type === 'admin' ? 'bg-primary bg-opacity-10 text-primary border border-primary' : 'bg-success bg-opacity-10 text-success border border-success' }} border-opacity-25 rounded-pill px-3 searchable-role">
-                        {{ ucfirst($user->type) }}
-                    </span>
+                    <div class="d-flex gap-1 flex-wrap">
+                        <span class="badge {{ $user->type === 'admin' ? 'bg-primary bg-opacity-10 text-primary border border-primary' : 'bg-success bg-opacity-10 text-success border border-success' }} border-opacity-25 rounded-pill px-3 searchable-role">
+                            {{ ucfirst($user->type) }}
+                        </span>
+                        
+                        <!-- NEW: Active/Pending Status Badge -->
+                        @if($user->is_active)
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3">
+                                Active
+                            </span>
+                        @else
+                            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 rounded-pill px-3">
+                                Pending Approval
+                            </span>
+                        @endif
+                    </div>
                 </div>
             </div>
             
         </div>
     </div>
 
-    <div class="modal fade append-to-body" id="viewUserModal{{ $user->id }}" tabindex="-1">
+    {{-- PUSH MODALS TO THE LAYOUT STACK --}}
+    @push('modals')
+    <div class="modal fade" id="viewUserModal{{ $user->id }}" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content glass-modal-content border-0">
                 <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
@@ -283,7 +320,7 @@
     </div>
 
     @if(Auth::check() && Auth::user()->type === 'admin')
-    <div class="modal fade append-to-body" id="editUserModal{{ $user->id }}" tabindex="-1">
+    <div class="modal fade" id="editUserModal{{ $user->id }}" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content glass-modal-content border-0">
                 <form action="{{ route('team.update', $user->id ?? 0) }}" method="POST">
@@ -347,7 +384,7 @@
         </div>
     </div>
 
-    <div class="modal fade append-to-body" id="deleteUserModal{{ $user->id }}" tabindex="-1">
+    <div class="modal fade" id="deleteUserModal{{ $user->id }}" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content glass-modal-content border-0">
                 <form action="{{ route('team.destroy', $user->id ?? 0) }}" method="POST">
@@ -371,12 +408,14 @@
         </div>
     </div>
     @endif
+    @endpush {{-- END OF MODAL PUSH --}}
 
     @endforeach
 </div>
 
 @if(Auth::check() && Auth::user()->type === 'admin')
-<div class="modal fade append-to-body" id="addMemberModal" tabindex="-1">
+@push('modals')
+<div class="modal fade" id="addMemberModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered"> 
         <div class="modal-content glass-modal-content border-0">
             <form action="{{ route('team.store') }}" method="POST">
@@ -413,7 +452,7 @@
                         </div>
                         
                         <div class="col-md-6 mt-4">
-                            <label class="small text-secondary mb-1 fw-semibold">Temporary Password <span class="text-danger">*</span></label>
+                            <label class="small text-secondary mb-1 fw-semibold">Password <span class="text-danger">*</span></label>
                             <div class="password-wrapper">
                                 <input type="password" name="password" id="newPassword" class="form-control glass-input px-3 py-2 pe-5" placeholder="Min. 6 chars" required>
                                 <button type="button" class="toggle-password" onclick="togglePassword('newPassword', 'eyeIcon1')">
@@ -449,14 +488,11 @@
         </div>
     </div>
 </div>
+@endpush
 @endif
 
 @push('scripts')
 <script>
-    $(document).ready(function() { 
-        $('.append-to-body').appendTo('body');
-    });
-
     function togglePassword(inputId, iconId) {
         var input = document.getElementById(inputId);
         var icon = document.getElementById(iconId);
