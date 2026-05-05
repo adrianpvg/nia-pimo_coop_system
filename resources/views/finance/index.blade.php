@@ -546,12 +546,18 @@
                                         <div class="invalid-feedback" id="amount_error" style="display: none;">Amount must be greater than zero.</div>
                                     </div>
 
-                                    <div class="col-md-4">
+                                    <!-- NEW CASAB BONUS SELECTION (Hidden by default) -->
+                                    <div class="col-md-8" id="casab_date_col" style="display: none;">
+                                        <label class="small text-secondary mb-1 fw-semibold text-success">Select Bonus Deduction Date <span class="text-danger">*</span></label>
+                                        <select id="casab_date_select" class="form-select glass-input px-3 py-2 fw-bold text-success border-success" onchange="syncCasabDate()"></select>
+                                    </div>
+
+                                    <div class="col-md-4" id="start_date_col">
                                         <label class="small text-secondary mb-1 fw-semibold">Payment Start <span class="text-danger">*</span></label>
                                         <input type="date" name="payment_start" id="start_date" class="form-control glass-input px-3 py-2" value="{{ date('Y-m-d') }}" min="2026-01-01" onchange="calculateFromDates()" required>
                                         <div class="invalid-feedback">Date must be from 2026 onwards.</div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-4" id="end_date_col">
                                         <label class="small text-secondary mb-1 fw-semibold">Payment End <span class="text-danger">*</span></label>
                                         <input type="date" name="payment_end" id="end_date" class="form-control glass-input px-3 py-2" value="{{ \Carbon\Carbon::now()->addMonths(6)->format('Y-m-d') }}" min="2026-01-01" onchange="calculateFromDates()" required>
                                         <div class="invalid-feedback" id="end_date_error">Date must be logically after Start Date.</div>
@@ -559,7 +565,7 @@
                                     <div class="col-md-4">
                                         <label class="small text-secondary mb-1 fw-semibold text-primary">Duration (Months) <i class="bi bi-pencil-square ms-1 small"></i></label>
                                         <input type="number" name="no_of_months" id="months" class="form-control glass-input px-3 py-2 fw-bold text-center border-primary" style="background: rgba(0, 122, 255, 0.05) !important;" oninput="calculateFromMonths()" min="1" max="36" step="1" required>
-                                        <div class="invalid-feedback">Enter a valid integer (1 to 36).</div>
+                                        <div class="invalid-feedback" id="months_error">Enter a valid term length.</div>
                                     </div>
 
                                     <!-- <div class="col-md-3 mt-3">
@@ -694,11 +700,8 @@
 <script>
     $(document).ready(function() { 
         $('#createLoanModal').appendTo('body');
-        
-        // NEW: Ensure all dynamically generated delete modals go to the body
         $('.loan-delete-modal').appendTo('body');
 
-        // Init DataTables
         if ($('#loansTable').length) {
             $('#loansTable').DataTable({
                 "destroy": true,
@@ -713,6 +716,116 @@
         }
         
         syncDate(); 
+
+        // --- DYNAMIC FORM LOGIC BASED ON LOAN TYPE ---
+        let loanTypeSelect = document.querySelector('select[name="type"]');
+        let appDateInput = document.getElementById('date_applied');
+
+        function updateLoanTypeConstraints() {
+            if (!loanTypeSelect) return;
+            let type = loanTypeSelect.value;
+            let monthsInput = document.getElementById('months');
+            let startDateCol = document.getElementById('start_date_col');
+            let endDateCol = document.getElementById('end_date_col');
+            let casabDateCol = document.getElementById('casab_date_col');
+            let errorText = document.getElementById('months_error');
+            
+            let appDateStr = appDateInput.value;
+            if (!appDateStr) appDateStr = new Date().toISOString().slice(0,10);
+            let appDate = new Date(appDateStr);
+            let year = appDate.getFullYear();
+
+            if (type === 'CASAB') {
+                monthsInput.value = 1;
+                monthsInput.setAttribute('max', '1');
+                monthsInput.setAttribute('readonly', true);
+                monthsInput.classList.add('bg-light');
+                if(errorText) errorText.innerText = "CASAB loans are fixed at 1 month.";
+                
+                // Hide standard dates, show specific CASAB date selector
+                startDateCol.style.display = 'none';
+                endDateCol.style.display = 'none';
+                if(casabDateCol) casabDateCol.style.display = 'block';
+                
+                let select = document.getElementById('casab_date_select');
+                if(select) {
+                    select.innerHTML = '';
+                    
+                    // Generate logical bonus dates (May 16 and Nov 16)
+                    let options = [];
+                    let midYear1 = new Date(year, 4, 16); // May 16 Current Year
+                    let yearEnd1 = new Date(year, 10, 16); // Nov 16 Current Year
+                    let midYear2 = new Date(year + 1, 4, 16); // May 16 Next Year
+                    let yearEnd2 = new Date(year + 1, 10, 16); // Nov 16 Next Year
+                    
+                    if (midYear1 >= appDate) options.push({ date: midYear1, label: "Mid-Year Bonus (May 16, " + year + ")" });
+                    if (yearEnd1 >= appDate) options.push({ date: yearEnd1, label: "Year-End Bonus (Nov 16, " + year + ")" });
+                    options.push({ date: midYear2, label: "Mid-Year Bonus (May 16, " + (year + 1) + ")" }); 
+                    options.push({ date: yearEnd2, label: "Year-End Bonus (Nov 16, " + (year + 1) + ")" });
+
+                    // Only show the next 2 valid upcoming periods
+                    options.slice(0, 2).forEach(opt => {
+                        let tzOffset = opt.date.getTimezoneOffset() * 60000;
+                        let localISOTime = (new Date(opt.date - tzOffset)).toISOString().slice(0, 10);
+                        
+                        let element = document.createElement('option');
+                        element.value = localISOTime;
+                        element.text = opt.label;
+                        select.appendChild(element);
+                    });
+                    
+                    window.syncCasabDate(); // Set hidden inputs & recalculate
+                }
+                
+            } else if (type === 'SPECIAL LOAN') {
+                monthsInput.removeAttribute('readonly');
+                monthsInput.classList.remove('bg-light');
+                monthsInput.setAttribute('max', '6');
+                if(errorText) errorText.innerText = "Special loans max term is 6 months.";
+                
+                if(parseInt(monthsInput.value) > 6) {
+                    monthsInput.value = 6;
+                }
+                
+                startDateCol.style.display = 'block';
+                endDateCol.style.display = 'block';
+                if(casabDateCol) casabDateCol.style.display = 'none';
+                syncDate();
+            } else {
+                // REGULAR SALARY LOAN
+                monthsInput.removeAttribute('readonly');
+                monthsInput.classList.remove('bg-light');
+                monthsInput.setAttribute('max', '36');
+                if(errorText) errorText.innerText = "Regular loans max term is 36 months.";
+                
+                if(parseInt(monthsInput.value) > 36) {
+                    monthsInput.value = 36;
+                }
+                
+                startDateCol.style.display = 'block';
+                endDateCol.style.display = 'block';
+                if(casabDateCol) casabDateCol.style.display = 'none';
+                syncDate();
+            }
+            calculateAll();
+        }
+
+        // Globally scoped so the HTML onchange attribute can reach it
+        window.syncCasabDate = function() {
+            let select = document.getElementById('casab_date_select');
+            if(select && select.value) {
+                // Backend requires payment_start and payment_end to be the same for CASAB
+                document.getElementById('start_date').value = select.value;
+                document.getElementById('end_date').value = select.value;
+                calculateAll();
+            }
+        };
+
+        if(loanTypeSelect) loanTypeSelect.addEventListener('change', updateLoanTypeConstraints);
+        if(appDateInput) appDateInput.addEventListener('change', updateLoanTypeConstraints);
+        
+        // Trigger constraints immediately on load to set proper max values
+        updateLoanTypeConstraints();
         
         if(document.getElementById('loanDistributionChart')) {
             const ctx = document.getElementById('loanDistributionChart').getContext('2d');
@@ -746,18 +859,16 @@
             });
         }
 
-        // Intercept form submission to run native Bootstrap validations
+        // Form Validation Interceptor
         document.getElementById('loanForm').addEventListener('submit', function(event) {
             let isValid = true;
             
-            // Check native HTML5 constraints
             if (!this.checkValidity()) {
                 event.preventDefault();
                 event.stopPropagation();
                 isValid = false;
             }
 
-            // Custom Amount Validation
             let amount = parseFloat(document.getElementById('amount').value) || 0;
             if (amount <= 0) {
                 document.getElementById('amount_display').classList.add('is-invalid');
@@ -770,19 +881,26 @@
                 document.getElementById('amount_error').style.display = 'none';
             }
 
-            // Custom Months Validation
+            // DYNAMIC DURATION VALIDATION
+            let type = loanTypeSelect ? loanTypeSelect.value : '';
+            let maxTerm = 36;
+            if (type === 'SPECIAL LOAN') maxTerm = 6;
+            if (type === 'CASAB') maxTerm = 1;
+
             let months = parseInt(document.getElementById('months').value) || 0;
-            if (months < 1 || months > 120) {
+            if (months < 1 || months > maxTerm) {
                 document.getElementById('months').classList.add('is-invalid');
                 isValid = false;
             } else {
                 document.getElementById('months').classList.remove('is-invalid');
             }
 
-            // Custom Dates Validation
             let dates = ['date_applied', 'start_date', 'end_date'];
             dates.forEach(function(id) {
                 let el = document.getElementById(id);
+                // Allow display:none elements to bypass direct value validation if CASAB
+                if (type === 'CASAB' && (id === 'start_date' || id === 'end_date')) return;
+                
                 if (el.value < '2026-01-01') {
                     el.classList.add('is-invalid');
                     isValid = false;
@@ -799,9 +917,7 @@
         }, false);
     });
 
-    // UX: Clean letters while typing and block negative sign entirely
     function cleanCurrencyInput(input) {
-        // Strip everything except numbers and a single decimal point (blocks '-')
         let val = input.value.replace(/[^0-9.]/g, '');
         let parts = val.split('.');
         if (parts.length > 2) {
@@ -812,7 +928,6 @@
         document.getElementById('amount').value = val || 0;
         input.value = val;
         
-        // Remove error state instantly when they start typing a valid number
         if(parseFloat(val) > 0) {
             input.classList.remove('is-invalid');
             document.getElementById('amount_group').classList.remove('invalid-group');
@@ -837,7 +952,6 @@
     function syncDate() {
         let appliedDate = document.getElementById('date_applied').value;
         if (appliedDate) {
-            // Auto correct if they type a date before 2026
             if(appliedDate < '2026-01-01') {
                 document.getElementById('date_applied').value = '2026-01-01';
                 appliedDate = '2026-01-01';
@@ -872,17 +986,14 @@
             let eMonth = parseInt(eParts[1]);
             let eDay = parseInt(eParts[2]);
 
-            // Prevent end date from being before/equal to start date
+            // For CASAB, dates will be identical, so this drops into months = 1
             if (endInput <= startInput) {
                 document.getElementById('months').value = 1;
                 calculateFromMonths(); 
                 return; 
             } else {
-                // Pure calendar month calculation (e.g. Feb 2026 to Mar 2026 = 1 month)
                 let months = (eYear - sYear) * 12 + (eMonth - sMonth);
                 
-                // Adjust if the end day is earlier in the month than the start day
-                // (Unless it's the strict end of the month)
                 if (eDay < sDay) {
                     let eDaysInMonth = new Date(eYear, eMonth, 0).getDate();
                     if (eDay < eDaysInMonth) {
@@ -890,8 +1001,15 @@
                     }
                 }
                 
+                let typeSelect = document.querySelector('select[name="type"]');
+                let maxTerm = 36;
+                if (typeSelect) {
+                    if(typeSelect.value === 'SPECIAL LOAN') maxTerm = 6;
+                    if(typeSelect.value === 'CASAB') maxTerm = 1;
+                }
+
                 if (months < 1) months = 1;
-                if (months > 120) months = 120;
+                if (months > maxTerm) months = maxTerm;
                 
                 document.getElementById('months').value = months;
                 document.getElementById('months').classList.remove('is-invalid');
@@ -904,7 +1022,6 @@
         let startInput = document.getElementById('start_date').value;
         let monthsField = document.getElementById('months');
         
-        // Remove non-numbers
         monthsField.value = monthsField.value.replace(/[^0-9]/g, '');
 
         if(monthsField.value === "") {
@@ -913,10 +1030,17 @@
         }
 
         let monthsInput = parseInt(monthsField.value);
+        let typeSelect = document.querySelector('select[name="type"]');
+        let maxTerm = 36;
 
-        if (monthsInput > 36) {
-            monthsField.value = 36;
-            monthsInput = 36;
+        if (typeSelect) {
+            if(typeSelect.value === 'SPECIAL LOAN') maxTerm = 6;
+            if(typeSelect.value === 'CASAB') maxTerm = 1;
+        }
+
+        if (monthsInput > maxTerm) {
+            monthsField.value = maxTerm;
+            monthsInput = maxTerm;
         }
 
         if (monthsInput < 1) {
@@ -930,12 +1054,10 @@
             let month = parseInt(parts[1]);
             let day = parseInt(parts[2]);
             
-            // Mathematically precise month addition
             month += monthsInput;
             year += Math.floor((month - 1) / 12);
             month = ((month - 1) % 12) + 1;
             
-            // Catch edge cases like "February 31st" and clamp to "February 28/29th"
             let daysInMonth = new Date(year, month, 0).getDate();
             if (day > daysInMonth) day = daysInMonth;
             
@@ -963,20 +1085,46 @@
         let totalPeriods = months * 2; 
         let halfMonthRate = monthlyRate / 2;
         
-        if (amount > 0 && totalPeriods > 0) {
-            let basePrincipalDue = amount / totalPeriods;
-            let runningBalance = amount;
-            let monthlyBalance = amount; 
+        let typeSelect = document.querySelector('select[name="type"]');
+        let type = typeSelect ? typeSelect.value : '';
 
-            for (let i = 1; i <= totalPeriods; i++) {
-                let isFirstHalf = (i % 2 !== 0);
+        // DYNAMIC INTEREST CALCULATION
+        if (type === 'CASAB') {
+            // CASAB FORMULA: Principal * (total days covered / 30) * base_interest
+            let appDateStr = document.getElementById('date_applied').value || new Date().toISOString().slice(0, 10);
+            let bonusDateSelect = document.getElementById('casab_date_select');
+            let bonusDateStr = (bonusDateSelect && bonusDateSelect.value) ? bonusDateSelect.value : appDateStr;
+            
+            let appDate = new Date(appDateStr);
+            let bonusDate = new Date(bonusDateStr);
+            
+            // Calculate exact days between application date and bonus date
+            let timeDiff = bonusDate.getTime() - appDate.getTime();
+            let totalDays = timeDiff > 0 ? Math.ceil(timeDiff / (1000 * 3600 * 24)) : 0;
+            
+            totalExpectedInterest = amount * (totalDays / 30) * monthlyRate;
 
-                let interestDue = monthlyBalance * halfMonthRate;
-                totalExpectedInterest += interestDue;
-                runningBalance -= basePrincipalDue;
+        } else if (type === 'SPECIAL LOAN') {
+            // Straight interest computation for non-amortized items
+            totalExpectedInterest = amount * monthlyRate * months;
+            
+        } else {
+            // Amortized interest logic for Regular Salary Loan
+            if (amount > 0 && totalPeriods > 0) {
+                let basePrincipalDue = amount / totalPeriods;
+                let runningBalance = amount;
+                let monthlyBalance = amount; 
 
-                if (!isFirstHalf) {
-                    monthlyBalance = runningBalance;
+                for (let i = 1; i <= totalPeriods; i++) {
+                    let isFirstHalf = (i % 2 !== 0);
+                    let interestDue = monthlyBalance * halfMonthRate;
+                    
+                    totalExpectedInterest += interestDue;
+                    runningBalance -= basePrincipalDue;
+
+                    if (!isFirstHalf) {
+                        monthlyBalance = runningBalance;
+                    }
                 }
             }
         }
@@ -1002,7 +1150,6 @@
         let net = amount - (serviceFee + surcharge + interest); 
         if(net < 0) net = 0;
 
-        // NEW: Calculate Total to Pay (Principal + Interest)
         let totalToPay = amount + interest;
 
         document.getElementById('service_fee_display').value = serviceFee.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -1012,12 +1159,8 @@
         document.getElementById('net_proceeds_display').value = '₱ ' + net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('net_proceeds_actual').value = net.toFixed(2);
 
-        // NEW: Display Total to Pay
         document.getElementById('total_pay_display').value = '₱ ' + totalToPay.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
-
-    // PASTE THIS RIGHT BELOW calculateAll()
-    // 
 </script>
 @endpush
 @endsection

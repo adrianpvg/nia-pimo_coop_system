@@ -172,13 +172,14 @@
             @php 
                 $total_principal = round($loan->amount_granted, 2);
                 
+                // Use round() to eliminate floating-point drift from the Collection sum
                 if (!is_null($loan->actual_months) && $loan->schedules->isNotEmpty()) {
                     $total_interest = round($loan->schedules->sum('interest_due'), 2);
                 } else {
-                    // This mirrors exactly how Special Loans calculate their total interest dynamically
                     $total_interest = round($total_principal * ($loan->interest_rate / 100), 2);
                 }
 
+                // Round all subsequent calculations to strictly enforce 2 decimal places
                 $total_liability = round($total_principal + $total_interest, 2);
 
                 $paid_principal = round($loan->payments->sum('amount_paid'), 2);
@@ -188,6 +189,7 @@
 
                 $bal = round($total_liability - $total_paid, 2);
                 
+                // Calculate remaining specific amounts
                 $rem_principal = max(0, round($total_principal - $paid_principal, 2));
                 $rem_interest = max(0, round($total_interest - $paid_interest, 2));
             @endphp
@@ -228,103 +230,29 @@
                 <div class="alert alert-info border-0 rounded-4 shadow-sm p-4 d-flex align-items-center mb-0" style="background: rgba(0, 122, 255, 0.05);">
                     <i class="bi bi-info-circle-fill fs-2 text-primary me-4"></i>
                     <div>
-                        <h6 class="fw-bold text-dark mb-1">Flexible Payment Structure</h6>
-                        <p class="small text-muted mb-0">Special Loans do not follow a strict month-to-month schedule. Payments reflect below as they are made against the total balance.</p>
+                        <h6 class="fw-bold text-dark mb-1">Special Loan Amortization</h6>
+                        <p class="small text-muted mb-0">Special Loans do not follow a strict month-to-month schedule. The borrower has a maximum of {{ $loan->actual_months ?? 6 }} months to settle the total balance flexibly.</p>
                     </div>
                 </div>
                 
-                <!-- NEW SPECIAL LOAN TABLE (Matching Regular Layout) -->
                 <div class="table-responsive mt-4">
                     <table class="table table-hover text-center align-middle mb-0">
                         <thead style="background: rgba(0, 122, 255, 0.05); border-bottom: 1px solid rgba(0, 122, 255, 0.1);">
                             <tr class="small text-uppercase text-secondary">
-                                <th class="py-3">Seq. No.</th>
-                                <th>Period Covered</th>
-                                <th>Principal</th>
-                                <th>Interest</th>
-                                <th>Total</th>
-                                <th>Balance</th>
-                                <th class="border-start">Payment Date</th>
-                                <th>Payment Amt.</th>
+                                <th class="py-3 text-start ps-4">Description</th>
+                                <th>Total Principal</th>
+                                <th>Total Interest</th>
+                                <th>Grand Total Due</th>
+                                <th>Current Balance</th>
                             </tr>
                         </thead>
                         <tbody class="border-top-0">
-                            <tr style="background: rgba(0, 0, 0, 0.02);">
-                                <td></td>
-                                <td class="text-start ps-4 fw-bold text-secondary">Loan Granted</td>
-                                <td></td><td></td><td></td>
-                                <td class="fw-bold text-dark">₱ {{ number_format($total_liability, 2) }}</td>
-                                <td class="border-start"></td><td></td>
-                            </tr>
-                            
-                            @php 
-                                $spRunBal = $total_liability; 
-                                $spRemPrin = $total_principal;
-                                $spRemInt = $total_interest;
-                                
-                                $total_prin_sched = 0;
-                                $total_int_sched = 0;
-                                $total_sum_sched = 0;
-                            @endphp
-                            
-                            @foreach($loan->payments as $index => $pay)
-                                @php 
-                                    $payTotal = $pay->amount_paid + $pay->interest;
-                                    $spRunBal -= $payTotal;
-                                    $spRemPrin -= $pay->amount_paid;
-                                    $spRemInt -= $pay->interest;
-                                    
-                                    $total_prin_sched += $pay->amount_paid;
-                                    $total_int_sched += $pay->interest;
-                                    $total_sum_sched += $payTotal;
-
-                                    // Dynamic Period Formatting
-                                    $payDateObj = \Carbon\Carbon::parse($pay->payment_date);
-                                    $monthName = $payDateObj->format('F');
-                                    $formattedPeriod = strlen($monthName) <= 5 ? $payDateObj->format('F d, Y') : $payDateObj->format('M. d, Y');
-                                    if ($monthName === 'September') $formattedPeriod = 'Sept. ' . $payDateObj->format('d, Y');
-                                @endphp
-                                <tr>
-                                    <td class="py-3 text-muted">{{ $index + 1 }}</td>
-                                    <td class="text-start ps-4 fw-semibold text-dark">{{ $formattedPeriod }}</td>
-                                    <td class="text-muted">₱ {{ number_format($pay->amount_paid, 2) }}</td>
-                                    <td class="text-muted">₱ {{ number_format($pay->interest, 2) }}</td>
-                                    <td class="fw-medium text-primary">₱ {{ number_format($payTotal, 2) }}</td>
-                                    <td class="fw-bold text-dark">₱ {{ number_format($spRunBal, 2) }}</td>
-                                    <td class="border-start text-success fw-medium">{{ $formattedPeriod }}</td>
-                                    <td class="text-success fw-bold">₱ {{ number_format($payTotal, 2) }}</td>
-                                </tr>
-                            @endforeach
-                            
-                            @if($spRunBal > 0)
-                                @php
-                                    $total_prin_sched += max(0, $spRemPrin);
-                                    $total_int_sched += max(0, $spRemInt);
-                                    $total_sum_sched += max(0, $spRunBal);
-
-                                    $dueDateObj = \Carbon\Carbon::parse($loan->payment_end);
-                                    $dueMonthName = $dueDateObj->format('F');
-                                    $formattedDueDate = strlen($dueMonthName) <= 5 ? $dueDateObj->format('F d, Y') : $dueDateObj->format('M. d, Y');
-                                    if ($dueMonthName === 'September') $formattedDueDate = 'Sept. ' . $dueDateObj->format('d, Y');
-                                @endphp
-                                <tr style="background: rgba(255, 193, 7, 0.05);">
-                                    <td class="py-3 text-muted">{{ $loan->payments->count() + 1 }}</td>
-                                    <td class="text-start ps-4 fw-bold text-danger">{{ $formattedDueDate }} <span class="badge bg-danger bg-opacity-10 text-danger ms-2">Due Date</span></td>
-                                    <td class="text-muted">₱ {{ number_format(max(0, $spRemPrin), 2) }}</td>
-                                    <td class="text-muted">₱ {{ number_format(max(0, $spRemInt), 2) }}</td>
-                                    <td class="fw-medium text-danger">₱ {{ number_format(max(0, $spRunBal), 2) }}</td>
-                                    <td class="fw-bold text-dark">₱ 0.00</td>
-                                    <td class="border-start"></td><td></td>
-                                </tr>
-                            @endif
-                            
-                            <tr style="background: rgba(0, 122, 255, 0.05); border-top: 2px solid rgba(0, 122, 255, 0.2);">
-                                <td colspan="2" class="text-end pe-4 fw-bold text-secondary text-uppercase" style="letter-spacing: 1px;">Totals:</td>
-                                <td class="fw-bold text-dark">₱ {{ number_format($total_prin_sched, 2) }}</td>
-                                <td class="fw-bold text-dark">₱ {{ number_format($total_int_sched, 2) }}</td>
-                                <td class="fw-bold text-primary fs-6">₱ {{ number_format($total_sum_sched, 2) }}</td>
-                                <td></td>
-                                <td class="border-start"></td><td></td>
+                            <tr>
+                                <td class="text-start ps-4 fw-bold text-dark py-4">Total Loan Obligation</td>
+                                <td class="text-muted fw-medium">₱ {{ number_format($total_principal, 2) }}</td>
+                                <td class="text-muted fw-medium">₱ {{ number_format($total_interest, 2) }}</td>
+                                <td class="fw-bold text-primary fs-5">₱ {{ number_format($total_liability, 2) }}</td>
+                                <td class="fw-bold {{ $bal > 0 ? 'text-danger' : 'text-success' }} fs-5">₱ {{ number_format($bal, 2) }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -333,6 +261,7 @@
                 <!-- ORIGINAL REGULAR LOAN SCHEDULE TABLE -->
                 <div class="table-responsive">
                     <table class="table table-hover text-center align-middle mb-0">
+                        <!-- ... Keep your existing <thead> and <tbody> for the normal schedule here ... -->
                         <thead style="background: rgba(0, 122, 255, 0.05); border-bottom: 1px solid rgba(0, 122, 255, 0.1);">
                             <tr class="small text-uppercase text-secondary">
                                 <th class="py-3">Seq. No.</th>
@@ -341,8 +270,6 @@
                                 <th>Interest</th>
                                 <th>Total</th>
                                 <th>Balance</th>
-                                <th class="border-start">Payment Date</th>
-                                <th>Payment Amt.</th>
                             </tr>
                         </thead>
                         <tbody class="border-top-0">
@@ -351,45 +278,13 @@
                                 <td class="text-start ps-4 fw-bold text-secondary">Principal</td>
                                 <td></td><td></td><td></td>
                                 <td class="fw-bold text-dark">₱ {{ number_format($loan->amount_granted, 2) }}</td>
-                                <td class="border-start"></td><td></td>
                             </tr>
                             
                             @forelse($loan->schedules as $index => $sched)
-                                @php
-                                    $paymentRecord = null;
-                                    
-                                    if ($loan->payment_preference === 'half_month') {
-                                        $paymentRecord = $loan->payments->where('period_covered', $sched->period_end)->first();
-                                    } else {
-                                        $monthKey = \Carbon\Carbon::parse($sched->period_end)->format('Y-m');
-                                        $paymentRecord = $loan->payments->where('period_covered', $monthKey)->first();
-                                    }
-
-                                    // Custom Abbreviation logic for period
-                                    $pStart = \Carbon\Carbon::parse($sched->period_start);
-                                    $pEnd = \Carbon\Carbon::parse($sched->period_end);
-
-                                    $startMonth = $pStart->format('F');
-                                    $startStr = strlen($startMonth) <= 5 ? $pStart->format('F d') : $pStart->format('M. d');
-                                    if ($startMonth === 'September') $startStr = 'Sept. ' . $pStart->format('d');
-
-                                    $endMonth = $pEnd->format('F');
-                                    $endStr = strlen($endMonth) <= 5 ? $pEnd->format('F d, Y') : $pEnd->format('M. d, Y');
-                                    if ($endMonth === 'September') $endStr = 'Sept. ' . $pEnd->format('d, Y');
-
-                                    $payDateStr = '';
-                                    if($paymentRecord) {
-                                        $payDateObj = \Carbon\Carbon::parse($paymentRecord->payment_date);
-                                        $payMonth = $payDateObj->format('F');
-                                        $payDateStr = strlen($payMonth) <= 5 ? $payDateObj->format('F d, Y') : $payDateObj->format('M. d, Y');
-                                        if ($payMonth === 'September') $payDateStr = 'Sept. ' . $payDateObj->format('d, Y');
-                                    }
-
-                                @endphp
                                 <tr>
                                     <td class="py-3 text-muted">{{ $index + 1 }}</td>
                                     <td class="text-start ps-4 fw-semibold text-dark">
-                                        {{ $startStr }}-{{ $endStr }}
+                                        {{ \Carbon\Carbon::parse($sched->period_start)->format('M d') }}-{{ \Carbon\Carbon::parse($sched->period_end)->format('d, Y') }}
                                     </td>
                                     <td class="text-muted">₱ {{ number_format($sched->principal_due, 4) }}</td>
                                     <td class="text-muted">₱ {{ number_format($sched->interest_due, 4) }}</td>
@@ -397,17 +292,10 @@
                                     <td class="fw-bold text-dark">
                                         {{ ($index + 1) % 2 == 0 || $loan->payment_preference === 'whole_month' ? '₱ ' . number_format($sched->balance_after, 2) : '' }}
                                     </td>
-                                    
-                                    <td class="border-start text-success fw-medium">
-                                        {{ $payDateStr }}
-                                    </td>
-                                    <td class="text-success fw-bold">
-                                        {{ $paymentRecord ? '₱ ' . number_format($paymentRecord->amount_paid + $paymentRecord->interest, 2) : '' }}
-                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="py-5 text-center text-muted">
+                                    <td colspan="6" class="py-5 text-center text-muted">
                                         <i class="bi bi-exclamation-circle fs-3 d-block mb-2 text-warning"></i>
                                         Schedule not generated.<br>
                                         Please set the <strong>Actual Term</strong> above to generate the amortization table.
@@ -422,7 +310,6 @@
                                     <td class="fw-bold text-dark">₱ {{ number_format(round($loan->schedules->sum('interest_due'), 2), 2) }}</td>
                                     <td class="fw-bold text-primary fs-6">₱ {{ number_format(round($loan->schedules->sum('total_due'), 2), 2) }}</td>
                                     <td></td>
-                                    <td class="border-start"></td><td></td>
                                 </tr>
                             @endif
                         </tbody>
@@ -447,7 +334,7 @@
                 <table class="table table-hover text-center align-middle mb-0">
                     <thead style="background: rgba(0, 122, 255, 0.05); border-bottom: 1px solid rgba(0, 122, 255, 0.1);">
                         <tr class="small text-uppercase text-secondary">
-                            <th class="py-3 text-start ps-4">Date Paid & Period</th>
+                            <th class="py-3 text-start ps-4">Date Paid & Encoder</th>
                             <th>Service Invoice</th>
                             <th>Principal Paid</th>
                             <th>Interest Paid</th>
@@ -466,41 +353,17 @@
                         
                         @php $runBal = $total_liability; @endphp
                         @forelse($loan->payments as $pay)
-                            @php 
-                                $runBal -= ($pay->amount_paid + $pay->interest); 
-                                
-                                // Format the period nicely for the badge display
-                                $periodTxt = $pay->period_covered;
-                                if (str_starts_with($periodTxt, 'SPECIAL-')) {
-                                    $formattedPeriod = 'Flexible / Custom';
-                                } elseif (strlen($periodTxt) == 10) {
-                                    $pObj = \Carbon\Carbon::parse($periodTxt);
-                                    $pMonth = $pObj->format('F');
-                                    $formattedPeriod = strlen($pMonth) <= 5 ? $pObj->format('F d, Y') : $pObj->format('M. d, Y');
-                                    if ($pMonth === 'September') $formattedPeriod = 'Sept. ' . $pObj->format('d, Y');
-                                } elseif (strlen($periodTxt) == 7) {
-                                    $pObj = \Carbon\Carbon::parse($periodTxt . '-01');
-                                    $pMonth = $pObj->format('F');
-                                    $formattedPeriod = strlen($pMonth) <= 5 ? $pObj->format('F Y') : $pObj->format('M. Y');
-                                    if ($pMonth === 'September') $formattedPeriod = 'Sept. ' . $pObj->format('Y');
-                                } else {
-                                    $formattedPeriod = $periodTxt;
-                                }
-                            @endphp
+                            @php $runBal -= ($pay->amount_paid + $pay->interest); @endphp
                             <tr>
                                 <td class="py-3 text-start ps-4">
-                                    <div class="small mt-1" style="font-size: 0.8rem; line-height: 1.4;">
-                                        <div class="text-dark fw-bold mb-1">{{ \Carbon\Carbon::parse($pay->payment_date)->format('M d, Y') }}</div>
-                                        
-                                        <div class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-2 px-2 py-1 mb-1">
-                                            Period: {{ $formattedPeriod }}
-                                        </div>
-
-                                        <div class="text-secondary mt-1" style="font-size: 0.7rem;">
+                                    <!-- THIS IS THE NEW AUDIT TRAIL DISPLAY -->
+                                    <div class="small mt-1" style="font-size: 0.75rem; line-height: 1.4;">
+                                        <div class="text-dark fw-bold">{{ \Carbon\Carbon::parse($pay->payment_date)->format('M d, Y') }}</div>
+                                        <div class="text-secondary">
                                             Created: <span class="fw-semibold text-dark">{{ $pay->creator->name ?? 'System' }}</span>
                                         </div>
                                         @if($pay->updated_by)
-                                            <div class="text-primary" style="font-size: 0.7rem;">
+                                            <div class="text-primary">
                                                 Updated: <span class="fw-semibold">{{ $pay->updater->name ?? 'Unknown' }}</span>
                                             </div>
                                         @endif
@@ -545,6 +408,7 @@
 <div id="all-modals-container">
 
     <!-- ACTUAL MONTHS MODAL -->
+    <!-- ACTUAL MONTHS MODAL -->
     <div class="modal fade" id="actualMonthsModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content glass-modal-content border-0">
@@ -570,7 +434,7 @@
                                 $maxTerm = 36;
                             }
                         @endphp
-
+                        
                         <div class="form-inner-panel p-3 text-center mb-3">
                             <label class="small text-secondary mb-2 fw-semibold">Actual Repayment Duration (Months)</label>
                                 <input type="number" name="actual_months" id="actual_months_input" class="form-control glass-input text-center fw-bold fs-4 text-primary w-50 mx-auto {{ $loan->type === 'CASAB' ? 'bg-light' : '' }}" value="{{ $loan->type === 'CASAB' ? 1 : old('actual_months', $loan->actual_months ?? $loan->no_of_months) }}" min="1" max="{{ $maxTerm }}" {{ $loan->type === 'CASAB' ? 'readonly' : 'required' }}>                            <div class="invalid-feedback mt-2" id="actual_months_error">
@@ -578,12 +442,13 @@
                             </div>
                         </div>
 
-                        <!-- Payment Preference Radio Buttons (Only for Regular Loans) -->
+                        <!-- NEW: Payment Preference Radio Buttons (Only for Regular Loans) -->
                         @if($loan->type === 'REGULAR SALARY LOAN')
                         <div class="form-inner-panel p-3 mb-3">
                             <label class="small text-secondary mb-3 fw-semibold d-block">Payment Method</label>
                             
                             <div class="row justify-content-center text-center">
+                                <!-- Casual / 15th & 30th Column -->
                                 <div class="col-sm-6 mb-3 mb-sm-0">
                                     <p class="mb-2 text-muted fw-semibold">Casual</p>
                                     <div class="form-check d-inline-block text-start">
@@ -592,6 +457,7 @@
                                     </div>
                                 </div>
 
+                                <!-- Permanent / Monthly Column -->
                                 <div class="col-sm-6">
                                     <p class="mb-2 text-muted fw-semibold">Permanent</p>
                                     <div class="form-check d-inline-block text-start">
@@ -672,11 +538,11 @@
                                         <!-- For Special Loans, we just allow custom amount payments against the balance -->
                                         <input type="hidden" name="period_covered" value="SPECIAL-PAYMENT">
                                         <input type="hidden" name="is_special_payment" value="1">
-                                        <div class="alert alert-info py-2 px-3 mb-0 small rounded-3 border border-info border-opacity-25 shadow-sm">
+                                        <div class="alert alert-info py-2 px-3 mb-0 small rounded-3">
                                             Special loans allow flexible payments against the remaining balance.
                                         </div>
                                     @else
-                                        <!-- For Regular Loans, select the specific period. We removed sequential restriction. -->
+                                        <!-- For Regular Loans, select the specific period -->
                                         <select name="period_covered" id="period_covered" class="form-select glass-input fw-bold px-3 py-2" style="border-color: rgba(0, 122, 255, 0.4) !important;" required onchange="updatePaymentDisplay(this)">
                                             <option value="" disabled selected>Choose a billing period...</option>
                                             @foreach($groupedSchedules as $periodKey => $periodSchedules)
@@ -713,14 +579,9 @@
                                                 <label class="small text-secondary mb-1 fw-bold">Enter Payment Amount <span class="text-danger">*</span></label>
                                                 <div class="input-group glass-input" style="padding: 0; overflow: hidden; border-color: rgba(0, 122, 255, 0.4); box-shadow: 0 4px 10px rgba(0, 122, 255, 0.05);">
                                                     <span class="input-group-text bg-transparent border-0 text-primary ps-3 pe-2 fw-bold fs-5">₱</span>
-                                                    <!-- Note: We check if there's a backend validation error specifically for this field -->
-                                                    <input type="number" step="0.01" name="custom_amount_paid" class="form-control bg-transparent border-0 py-3 fw-bold fs-4 text-primary shadow-none {{ $errors->has('custom_amount_paid') ? 'is-invalid' : '' }}" placeholder="0.00" value="{{ old('custom_amount_paid') }}" max="{{ $bal }}" required>
+                                                    <input type="number" step="0.01" name="custom_amount_paid" class="form-control bg-transparent border-0 py-3 fw-bold fs-4 text-primary shadow-none" placeholder="0.00" max="{{ $bal }}" required>
                                                 </div>
-                                                @error('custom_amount_paid')
-                                                    <div class="small text-danger fw-bold mt-1">{{ $message }}</div>
-                                                @else
-                                                    <div class="small text-muted mt-1">Maximum payable: ₱{{ number_format($bal, 2) }}</div>
-                                                @enderror
+                                                <div class="small text-muted mt-1">Maximum payable: ₱{{ number_format($bal, 2) }}</div>
                                             </div>
                                         @else
                                             <!-- Readonly Amount Display for Regular Loans -->
@@ -839,28 +700,26 @@
         </div>
         
     @endforeach
-</div> 
+</div> <!-- End all-modals-container -->
 @endpush
 
 @push('scripts')
 <script>
     $(document).ready(function() { 
+        // 1. THIS IS THE MAGIC FIX: Move the ENTIRE container of modals to the body
+        // This ensures they are completely immune to the Glassmorphism CSS blur.
         let modalsContainer = document.getElementById('all-modals-container');
         if (modalsContainer) {
             document.body.appendChild(modalsContainer);
         }
 
-        // If backend validation failed specifically for custom amount, pop the modal open automatically
-        @if($errors->has('custom_amount_paid'))
-            var paymentModal = new bootstrap.Modal(document.getElementById('addPaymentModal'));
-            paymentModal.show();
-        @endif
-
+        // Show Actual Months Modal automatically if missing
         @if(is_null($loan->actual_months))
             var myModal = new bootstrap.Modal(document.getElementById('actualMonthsModal'));
             myModal.show();
         @endif
 
+        // Validation for Actual Months Form
         let actualMonthsForm = document.getElementById('actualMonthsForm');
         if (actualMonthsForm) {
             actualMonthsForm.addEventListener('submit', function(event) {
@@ -898,6 +757,7 @@
             });
         }
         
+        // Intercept Add Payment Form
         let paymentForm = document.getElementById('paymentForm');
         if (paymentForm) {
             paymentForm.addEventListener('submit', function(event) {
@@ -910,26 +770,11 @@
                     document.getElementById('or_number').classList.remove('is-invalid');
                 }
                 
-                // Only validate period_covered if it exists (Regular Loans)
-                let periodSelect = document.getElementById('period_covered');
-                if(periodSelect && periodSelect.value === '') {
-                    periodSelect.classList.add('is-invalid');
+                if(document.getElementById('period_covered').value === '') {
+                    document.getElementById('period_covered').classList.add('is-invalid');
                     isValid = false;
-                } else if(periodSelect) {
-                    periodSelect.classList.remove('is-invalid');
-                }
-
-                // Validate Custom Amount for Special Loans
-                let customAmtInput = document.querySelector('input[name="custom_amount_paid"]');
-                if (customAmtInput) {
-                    let customAmt = parseFloat(customAmtInput.value) || 0;
-                    let maxBal = {{ $bal }};
-                    if (customAmt <= 0 || customAmt > maxBal) {
-                        customAmtInput.classList.add('is-invalid');
-                        isValid = false;
-                    } else {
-                        customAmtInput.classList.remove('is-invalid');
-                    }
+                } else {
+                    document.getElementById('period_covered').classList.remove('is-invalid');
                 }
 
                 if (!isValid) {
@@ -938,20 +783,10 @@
                     this.classList.add('was-validated');
                 }
             }, false);
-
-            // Clean custom amount error visually when typing
-            let customAmtInput = document.querySelector('input[name="custom_amount_paid"]');
-            if (customAmtInput) {
-                customAmtInput.addEventListener('input', function() {
-                    let val = parseFloat(this.value) || 0;
-                    if(val > 0 && val <= {{ $bal }}) {
-                        this.classList.remove('is-invalid');
-                    }
-                });
-            }
         }
     });
 
+    // Update dynamic amount display when a billing month is chosen
     function updatePaymentDisplay(selectElement) {
         let selectedOption = selectElement.options[selectElement.selectedIndex];
         

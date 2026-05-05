@@ -10,67 +10,129 @@ class LoanAmortizationService
 {
     public function generateSchedule(Loan $loan)
     {
-        // 1. Clear any existing schedule in case they are updating the term
         $loan->schedules()->delete();
 
-        // 2. Setup initial variables using EXACT, unrounded math
-        $exactRunningBalance = $loan->amount_granted;
-        $exactMonthlyBalance = $loan->amount_granted; 
+        if ($loan->type === 'SPECIAL LOAN') {
+            $this->generateSpecialLoanSchedule($loan);
+        } else {
+            // Handles REGULAR SALARY LOAN and any others (e.g. CASAB) using the standard diminishing method
+            $this->generateRegularLoanSchedule($loan);
+        }
+    }
+
+    private function generateSpecialLoanSchedule(Loan $loan)
+    {
+        $totalPeriods = $loan->actual_months; // 1 period = 1 full month
+        $principalDue = round($loan->amount_granted / $totalPeriods, 2);
         
-        $totalPeriods = $loan->actual_months * 2; 
-        $exactPrincipalDue = $exactRunningBalance / $totalPeriods;
-        $interestRatePerHalfMonth = ($loan->base_interest * 0.01) / 2;
+        // SPECIAL LOAN MATH: Flat interest per month. Does NOT diminish based on remaining balance.
+        $interestRateDecimal = $loan->base_interest / 100;
+        $interestDue = round($loan->amount_granted * $interestRateDecimal, 2);
+        
+        $totalDue = $principalDue + $interestDue;
+        
+        $exactRunningBalance = $loan->amount_granted;
         $currentDate = Carbon::parse($loan->payment_start);
         
         $schedules = [];
+        $totalRoundedInterestAdded = 0;
         
-        // 👉 THE FIX: Trackers to force the final sum to match Excel perfectly
+        for ($i = 1; $i <= $totalPeriods; $i++) {
+            $periodStart = $currentDate->copy()->startOfMonth();
+            $periodEnd = $currentDate->copy()->endOfMonth();
+
+            // Adjust the final principal to absorb rounding drift
+            if ($i === $totalPeriods) {
+                $actualPrincipal = round($exactRunningBalance, 2);
+            } else {
+                $actualPrincipal = $principalDue;
+            }
+
+            $exactRunningBalance -= $actualPrincipal;
+            $totalRoundedInterestAdded += $interestDue;
+
+            $schedules[] = [
+                'loan_id' => $loan->id,
+                'period_start' => $periodStart->format('Y-m-d'),
+                'period_end' => $periodEnd->format('Y-m-d'),
+                'principal_due' => $actualPrincipal,
+                'interest_due' => $interestDue,
+                'total_due' => round($actualPrincipal + $interestDue, 2),
+                'balance_after' => max(0, round($exactRunningBalance, 2)),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            $currentDate->addMonth();
+        }
+
+        LoanSchedule::insert($schedules);
+
+        $loan->update([
+            'interest' => $totalRoundedInterestAdded
+        ]);
+    }
+
+    private function generateRegularLoanSchedule(Loan $loan)
+    {
+        $exactRunningBalance = $loan->amount_granted;
+        $exactMonthlyBalance = $loan->amount_granted; 
+        
+        $isHalfMonth = $loan->payment_preference === 'half_month';
+        
+        // Setup periods based on preference
+        $totalPeriods = $isHalfMonth ? ($loan->actual_months * 2) : $loan->actual_months;
+        $exactPrincipalDue = $exactRunningBalance / $totalPeriods;
+        
+        // Setup interest rate block based on preference
+        $baseDecimal = $loan->base_interest / 100;
+        $interestRate = $isHalfMonth ? ($baseDecimal / 2) : $baseDecimal;
+        
+        $currentDate = Carbon::parse($loan->payment_start);
+        
+        $schedules = [];
         $totalRoundedInterestAdded = 0; 
         $exactTotalInterestAccumulator = 0; 
 
-        // 3. Loop through and generate each period
         for ($i = 1; $i <= $totalPeriods; $i++) {
             
-            $isFirstHalf = ($i % 2 !== 0); 
-
-            if ($isFirstHalf) {
-                $periodStart = $currentDate->copy()->startOfMonth();
-                $periodEnd = $currentDate->copy()->day(15);
+            if ($isHalfMonth) {
+                $isFirstHalf = ($i % 2 !== 0); 
+                if ($isFirstHalf) {
+                    $periodStart = $currentDate->copy()->startOfMonth();
+                    $periodEnd = $currentDate->copy()->day(15);
+                } else {
+                    $periodStart = $currentDate->copy()->day(16);
+                    $periodEnd = $currentDate->copy()->endOfMonth();
+                }
             } else {
-                $periodStart = $currentDate->copy()->day(16);
+                $isFirstHalf = false; // Always update monthly balance for whole months
+                $periodStart = $currentDate->copy()->startOfMonth();
                 $periodEnd = $currentDate->copy()->endOfMonth();
             }
 
-            // --- PRINCIPAL CALCULATION ---
             if ($i === $totalPeriods) {
                 $principalDue = round($exactRunningBalance, 2);
             } else {
                 $principalDue = round($exactPrincipalDue, 2);
             }
 
-            // --- INTEREST CALCULATION ---
-            // Calculate exact Excel-style interest for this period in the background
-            $exactInterestDue = $exactMonthlyBalance * $interestRatePerHalfMonth;
+            $exactInterestDue = $exactMonthlyBalance * $interestRate;
             $exactTotalInterestAccumulator += $exactInterestDue;
 
             if ($i === $totalPeriods) {
-                // THE FINAL ROW "PLUG":
-                // Take Excel's exact grand total and subtract all previously rounded rows.
-                // This forces the table's total to match Excel perfectly without breaking calculator math.
                 $targetTotalInterest = round($exactTotalInterestAccumulator, 2);
                 $interestDue = round($targetTotalInterest - $totalRoundedInterestAdded, 2);
             } else {
-                // Normal rounding for the table display
                 $interestDue = round($exactInterestDue, 2);
             }
 
             $totalDue = round($principalDue + $interestDue, 2);
-            
-            // Advance the math for the next loop
             $exactRunningBalance -= $exactPrincipalDue;
-            
-            // Track the rounded interest we just locked into the database
             $totalRoundedInterestAdded += $interestDue;
+
+            // Only show balance on the second half (or always if whole month)
+            $showBalance = !$isHalfMonth || !$isFirstHalf || $i === $totalPeriods;
 
             $schedules[] = [
                 'loan_id' => $loan->id,
@@ -79,18 +141,21 @@ class LoanAmortizationService
                 'principal_due' => $principalDue,
                 'interest_due' => $interestDue,
                 'total_due' => $totalDue,
-                'balance_after' => max(0, round($exactRunningBalance, 2)),
+                'balance_after' => $showBalance ? max(0, round($exactRunningBalance, 2)) : 0, 
                 'created_at' => now(),
                 'updated_at' => now(),
             ];
 
-            if (!$isFirstHalf) {
+            if (!$isHalfMonth || !$isFirstHalf) {
                 $exactMonthlyBalance = $exactRunningBalance;
                 $currentDate->addMonth();
             }
         }
 
-        // 4. Save everything to the database
         LoanSchedule::insert($schedules);
+
+        $loan->update([
+            'interest' => $totalRoundedInterestAdded
+        ]);
     }
 }

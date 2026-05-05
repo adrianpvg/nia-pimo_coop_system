@@ -44,8 +44,18 @@ Route::middleware('guest')->group(function () {
             event(new Verified($user));
         }
 
-        return redirect('/login')->with('success', 'Email successfully verified! Your account is now pending Administrator approval.');
-    })->middleware(['signed'])->name('verification.verify');
+        // Dynamic success message
+        if ($user->markEmailAsVerified()) {
+            event(new Verified($user));
+        }
+
+        // Dynamic success message
+        $message = $user->is_active 
+            ? 'Email successfully verified! You may now log in.' 
+            : 'Email successfully verified! Your account is now pending Administrator approval.';
+
+        return redirect('/login')->with('success', $message);
+    })->middleware(['signed'])->name('verification.verify');;
 });
 // ==========================================
 // AUTHENTICATED ROUTES (Must be logged in to access)

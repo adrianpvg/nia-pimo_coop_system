@@ -17,7 +17,8 @@ class Loan extends Model {
         'payment_start', 
         'payment_end',
         'no_of_months',
-        'actual_months'
+        'actual_months',
+        'payment_preference',
     ];
 
     public function borrower() { return $this->belongsTo(\App\Models\Borrower::class); }

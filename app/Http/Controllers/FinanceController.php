@@ -88,41 +88,68 @@ class FinanceController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $rules = [
             'type' => 'required|string',
             'borrower_name' => 'required|string',
             'office_name' => 'required|string',
             'date_of_application' => 'required|date',
-            'payment_start' => 'required|date',
-            'payment_end' => 'required|date|after_or_equal:payment_start',
-            'no_of_months' => 'required|integer|min:1|max:120',
             'amount_granted' => 'required|numeric|min:0',
             'base_interest' => 'required|numeric|min:0',
             'interest_rate' => 'required|numeric|min:0',
-        ]);
+        ];
+
+        // --- NEW DYNAMIC CONSTRAINTS ---
+        if ($request->type === 'CASAB') {
+            $rules['no_of_months'] = 'required|integer|in:1';
+            $rules['payment_start'] = 'required|date|after_or_equal:date_of_application';
+            $rules['payment_end'] = 'required|date|same:payment_start'; // Must be paid in exactly 1 period
+        } elseif ($request->type === 'SPECIAL LOAN') {
+            $rules['no_of_months'] = 'required|integer|min:1|max:6';
+            $rules['payment_start'] = 'required|date';
+            $rules['payment_end'] = 'required|date|after_or_equal:payment_start';
+        } else {
+            // REGULAR SALARY LOAN
+            $rules['no_of_months'] = 'required|integer|min:1|max:36';
+            $rules['payment_start'] = 'required|date';
+            $rules['payment_end'] = 'required|date|after_or_equal:payment_start';
+        }
+
+        $request->validate($rules);
+
+        // EXTRA SECURITY: Ensure CASAB dates are exactly May 16 or Nov 16
+        if ($request->type === 'CASAB') {
+            $startMonthDay = \Carbon\Carbon::parse($request->payment_start)->format('m-d');
+            if ($startMonthDay !== '05-16' && $startMonthDay !== '11-16') {
+                return back()->withErrors(['type' => 'CASAB loans must be scheduled for the Mid-Year (May 16) or Year-End (Nov 16) bonus.'])->withInput();
+            }
+        }
+
+        if ($request->type === 'CASAB') {
+            $rules['no_of_months'] = 'required|integer|in:1';
+            // Start and End must be the same for a one-time bonus deduction
+            $request->merge([
+                'payment_end' => $request->payment_start,
+                'no_of_months' => 1
+            ]);
+        }
 
         $date = Carbon::parse($request->date_of_application);
         $year = $date->format('y'); 
         $month = $date->format('m'); 
         
-        // --- CORRECTED LOGIC START ---
-        // Instead of count(), find the loan with the highest control number for this specific month
         $lastLoan = Loan::whereYear('date_of_application', $date->year)
                         ->whereMonth('date_of_application', $date->month)
                         ->orderBy('control_number', 'desc')
                         ->first();
 
         if ($lastLoan) {
-            // Extract the last 3 digits (the sequence) from the existing control number and increment it
             $lastSequence = (int) substr($lastLoan->control_number, -3);
             $nextSequence = $lastSequence + 1;
         } else {
-            // If no loans exist for this month yet, start at 1
             $nextSequence = 1;
         }
         
         $control_number = $year . '-' . $month . '-' . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
-        // --- CORRECTED LOGIC END ---
 
         $office = Office::firstOrCreate(['name' => strtoupper($request->office_name)]);
         $borrower = Borrower::firstOrCreate(
@@ -148,52 +175,26 @@ class FinanceController extends Controller
             'payment_start' => $request->payment_start,
             'payment_end' => $request->payment_end,
             'no_of_months' => $request->no_of_months, 
+            'payment_preference' => ($request->type === 'CASAB') ? 'whole_month' : null 
         ]);
 
         
         return redirect()->route('finance.show', $loan->id)
                          ->with('success', 'Application Added! Control No: ' . $control_number);
-        //return back()->with('success', 'Application Added! Control No: ' . $control_number);
     }
 
     public function show($id)
     {
-        // ADD 'schedules' into the array here!
         $loan = Loan::with(['borrower.office', 'payments', 'schedules'])->findOrFail($id);
         
         return view('finance.show', compact('loan'));
     }
 
-    // public function updateActualMonths(Request $request, $id)
-    // {
-    //     $loan = Loan::findOrFail($id);
-
-    //     // Dynamically determine the max limit for backend security
-    //     $maxTerm = ($loan->type === 'REGULAR SALARY LOAN') ? 32 : 36;
-
-    //     $request->validate([
-    //         'actual_months' => 'required|integer|min:1|max:' . $maxTerm
-    //     ]);
-
-    //     $loan->update([
-    //         'actual_months' => $request->actual_months
-    //     ]);
-
-    //     return back()->with('success', 'Amortization term successfully set to ' . $request->actual_months . ' months.');
-    // }
-
-    // NEW: Delete Entire Loan Application Logic
     public function destroyLoan($id)
     {
         $loan = Loan::findOrFail($id);
-        
-        // Delete all associated payments first so the database doesn't crash from foreign key constraints
         $loan->payments()->delete(); 
-        
-        // Then delete the loan
         $loan->delete();
-
-        // Redirect back to the index view, carrying over the success message
         return redirect()->route('finance.index')->with('success', 'Loan application and all related payment records have been deleted.');
     }
 
@@ -206,29 +207,93 @@ class FinanceController extends Controller
             'payment_date' => 'required|date',
         ]);
 
-        $loan = \App\Models\Loan::with('schedules')->findOrFail($request->loan_id);
+        $loan = \App\Models\Loan::with('schedules', 'payments')->findOrFail($request->loan_id);
 
-        // Security Check 1: Ensure this month hasn't already been paid
-        if ($loan->payments()->where('period_covered', $request->period_covered)->exists()) {
-            return back()->withErrors(['period_covered' => 'This month has already been paid.']);
+        // --- SPECIAL LOAN PAYMENT LOGIC ---
+        // --- SPECIAL LOAN PAYMENT LOGIC ---
+        if ($loan->type === 'SPECIAL LOAN') {
+            $request->validate([
+                'custom_amount_paid' => 'required|numeric|min:1'
+            ]);
+
+            $paymentAmount = $request->custom_amount_paid;
+            
+            // Calculate total expected
+            $totalPrincipal = $loan->amount_granted;
+            $totalInterest = $loan->amount_granted * ($loan->base_interest / 100) * $loan->actual_months; 
+            
+            $paidPrincipal = $loan->payments->sum('amount_paid');
+            $paidInterest = $loan->payments->sum('interest');
+            
+            $remPrincipal = max(0, $totalPrincipal - $paidPrincipal);
+            $remInterest = max(0, $totalInterest - $paidInterest);
+            $totalRemaining = $remPrincipal + $remInterest;
+
+            if ($paymentAmount > round($totalRemaining, 2)) {
+                return back()->withErrors(['custom_amount_paid' => 'Payment exceeds remaining balance.']);
+            }
+
+            // PROPORTIONAL SPLIT LOGIC
+            $totalExpectedLiability = $totalPrincipal + $totalInterest;
+            
+            // What percentage of the total debt is principal, and what percentage is interest?
+            $principalRatio = $totalPrincipal / $totalExpectedLiability;
+            $interestRatio = $totalInterest / $totalExpectedLiability;
+
+            // Split the incoming payment by those exact percentages
+            $appliedToPrincipal = round($paymentAmount * $principalRatio, 2);
+            $appliedToInterest = round($paymentAmount * $interestRatio, 2);
+
+            // Because of rounding, there might be a 1-cent drift. We apply any remainder to principal.
+            $actualTotal = $appliedToPrincipal + $appliedToInterest;
+            if ($actualTotal !== $paymentAmount) {
+                $difference = $paymentAmount - $actualTotal;
+                $appliedToPrincipal += $difference;
+            }
+
+            // Final safety net: If we somehow overpay interest via drift, shift it to principal
+            if ($appliedToInterest > $remInterest) {
+                $excess = $appliedToInterest - $remInterest;
+                $appliedToInterest = $remInterest;
+                $appliedToPrincipal += $excess;
+            }
+
+            \App\Models\Payment::create([
+                'loan_id' => $loan->id,
+                'created_by' => auth()->id(), 
+                'period_covered' => 'SPECIAL-' . uniqid(), 
+                'amount_paid' => $appliedToPrincipal,
+                'interest' => $appliedToInterest,
+                'or_number' => $request->or_number,
+                'payment_date' => $request->payment_date,
+            ]);
+
+            return back()->with('success', 'Special Loan Payment Recorded Successfully!');
         }
 
-        // Get the specific schedule rows for the selected month (combines the 1-15 and 16-EOM periods)
+        // --- REGULAR LOAN PAYMENT LOGIC ---
+        if ($loan->payments()->where('period_covered', $request->period_covered)->exists()) {
+            return back()->withErrors(['period_covered' => 'This period has already been paid.']);
+        }
+
         $schedules = $loan->schedules->filter(function ($sched) use ($request) {
-            return \Carbon\Carbon::parse($sched->period_end)->format('Y-m') === $request->period_covered;
+            if (strlen($request->period_covered) > 7) {
+                return $sched->period_end === $request->period_covered;
+            } else {
+                return \Carbon\Carbon::parse($sched->period_end)->format('Y-m') === $request->period_covered;
+            }
         });
 
         if ($schedules->isEmpty()) {
             return back()->withErrors(['period_covered' => 'Invalid schedule period selected.']);
         }
 
-        // Automate the calculation securely on the backend
         $totalPrincipal = $schedules->sum('principal_due');
         $totalInterest = $schedules->sum('interest_due');
 
         \App\Models\Payment::create([
             'loan_id' => $loan->id,
-            'created_by' => auth()->id(), // ONLY logs the creator
+            'created_by' => auth()->id(), 
             'period_covered' => $request->period_covered,
             'amount_paid' => $totalPrincipal,
             'interest' => $totalInterest,
@@ -249,10 +314,10 @@ class FinanceController extends Controller
         
         $payment->update([
             'or_number' => $request->or_number,
-            'updated_by' => auth()->id(), // ONLY logs who updated it
+            'updated_by' => auth()->id(), 
         ]);
 
-        return back()->with('success', 'Payment OR Number successfully updated.');
+        return back()->with('success', 'Payment Service Invoice successfully updated.');
     }
 
     public function deletePayment($id)
@@ -267,21 +332,27 @@ class FinanceController extends Controller
     {
         $loan = Loan::findOrFail($id);
 
-        $maxTerm = ($loan->type === 'REGULAR SALARY LOAN') ? 36 : 36;
+        // ENFORCE MAX LIMITS BASED ON LOAN TYPE
+        if ($loan->type === 'CASAB') {
+            $rules = [ 'actual_months' => 'required|integer|in:1' ];
+        } elseif ($loan->type === 'SPECIAL LOAN') {
+            $rules = [ 'actual_months' => 'required|integer|min:1|max:6' ];
+        } else {
+            $rules = [
+                'actual_months' => 'required|integer|min:1|max:36',
+                'payment_preference' => 'required|in:half_month,whole_month'
+            ];
+        }
 
-        $request->validate([
-            'actual_months' => 'required|integer|min:1|max:' . $maxTerm
-        ]);
+        $request->validate($rules);
 
-        // CRITICAL UPDATE: Wipe old payments to prevent mathematical corruption
-        // Because the schedule is changing, old payments tied to old periods are now invalid.
         $loan->payments()->delete();
 
         $loan->update([
             'actual_months' => $request->actual_months,
+            'payment_preference' => $request->payment_preference ?? 'whole_month', // Default to whole for special
         ]);
 
-        // RUN THE MATH ENGINE!
         $amortizationService->generateSchedule($loan);
 
         return back()->with('success', 'Amortization term updated. All previous payment records have been reset to match the new schedule.');
@@ -301,7 +372,7 @@ class FinanceController extends Controller
 
     public function exportSched($id) 
     {
-        $loan = Loan::with(['borrower.office', 'schedules'])->findOrFail($id);
+        $loan = Loan::with(['borrower.office', 'schedules', 'payments'])->findOrFail($id);
         
         $date = Carbon::parse($loan->date_of_application)->format('M d, Y');
         $filename = "{$loan->borrower->name} - {$date} Schedule.xlsx";
