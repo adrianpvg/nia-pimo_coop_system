@@ -188,9 +188,15 @@
     
     <div> 
         @if(Auth::check() && Auth::user()->type === 'admin')
-            <button class="btn btn-dark shadow-sm px-4" style="border-radius: 12px;" data-bs-toggle="modal" data-bs-target="#addMemberModal">
-                <i class="bi bi-person-plus-fill me-2"></i> Add Member
-            </button>
+            <div class="d-flex gap-2"> 
+                <button class="btn btn-outline-dark shadow-sm px-4" style="border-radius: 12px; background: rgba(255,255,255,0.6); backdrop-filter: blur(10px);" data-bs-toggle="modal" data-bs-target="#editCommitteeModal">
+                    <i class="bi bi-people-fill me-2"></i> Edit Committee
+                </button>
+                
+                <button class="btn btn-dark shadow-sm px-4" style="border-radius: 12px;" data-bs-toggle="modal" data-bs-target="#addMemberModal">
+                    <i class="bi bi-person-plus-fill me-2"></i> Add Member
+                </button>
+            </div>
         @endif
     </div>
 </div>
@@ -269,7 +275,6 @@
                             {{ ucfirst($user->type) }}
                         </span>
                         
-                        <!-- NEW: Active/Pending Status Badge -->
                         @if($user->is_active)
                             <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3">
                                 Active
@@ -415,6 +420,52 @@
 
 @if(Auth::check() && Auth::user()->type === 'admin')
 @push('modals')
+
+<div class="modal fade" id="editCommitteeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered"> 
+        <div class="modal-content glass-modal-content border-0">
+            <form action="{{ route('committee.update') }}" method="POST">
+                @csrf
+                @method('PUT')
+                
+                @php
+                    $committee = \App\Models\CommitteeSignatory::first();
+                @endphp
+
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <h4 class="modal-title fw-bold" style="background: linear-gradient(90deg, #007aff, #34c759); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                        Edit Committee Signatories
+                    </h4>
+                    <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
+                </div>
+                
+                <div class="modal-body px-4 py-4">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="small text-secondary mb-1 fw-semibold">Member - Credit Committee <span class="text-danger">*</span></label>
+                            <input type="text" name="credit_committee_name" class="form-control glass-input px-3 py-2" value="{{ $committee->credit_committee_name ?? 'ARNEL S. ABALOS' }}" required>
+                        </div>
+                        
+                        <div class="col-12 mt-3">
+                            <label class="small text-secondary mb-1 fw-semibold">Chair-Person Committee <span class="text-danger">*</span></label>
+                            <input type="text" name="chair_person_name" class="form-control glass-input px-3 py-2" value="{{ $committee->chair_person_name ?? 'FRANCIS DAVE T. RAMIREZ' }}" required>
+                        </div>
+                        
+                        <div class="col-12 mt-3 border-top pt-3" style="border-color: rgba(0,0,0,0.05) !important;">
+                            <p class="small text-muted mb-0"><i class="bi bi-info-circle me-1"></i>These names will appear on all generated computation sheets.</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-top-0 pt-0 px-4 pb-4 mt-2">
+                    <button type="button" class="btn btn-light rounded-pill px-4 shadow-sm" data-bs-dismiss="modal" style="background: rgba(255,255,255,0.7);">Cancel</button>
+                    <button type="submit" class="btn btn-dark rounded-pill px-4 shadow-sm fw-bold">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="addMemberModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered"> 
         <div class="modal-content glass-modal-content border-0">

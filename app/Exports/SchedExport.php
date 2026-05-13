@@ -3,6 +3,7 @@
 namespace App\Exports;
 
 use App\Models\Loan;
+use App\Models\CommitteeSignatory;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
@@ -210,7 +211,12 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
 
         $rows[] = ['', 'Prepared by:', '', '', 'Approved:', '', '', '', '']; 
         $rows[] = ['', '', '', '', '', '', '', '', '']; 
-        $rows[] = ['', 'ARNEL S. ABALOS', '', '', 'FRANCIS DAVE T. RAMIREZ', '', '', '', ''];
+        
+        $committee = CommitteeSignatory::first();
+        $creditName = $committee ? $committee->credit_committee_name : 'ARNEL S. ABALOS';
+        $chairName = $committee ? $committee->chair_person_name : 'FRANCIS DAVE T. RAMIREZ';
+
+        $rows[] = ['', $creditName, '', '', $chairName, '', '', '', ''];
         $rows[] = ['', 'Member-Credit Committee', '', '', 'Chair-Person Committee', '', '', '', ''];
 
         return $rows;

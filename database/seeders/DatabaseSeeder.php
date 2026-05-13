@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User;
 use App\Models\Office;
+use App\Models\CommitteeSignatory;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash; 
@@ -35,6 +36,11 @@ class DatabaseSeeder extends Seeder
             'type' => 'member', 
             'is_active' => true, // <-- EDIT: Allow immediate login
             'email_verified_at' => now(), // <-- EDIT: Skip email verification step
+        ]);
+
+        CommitteeSignatory::create([
+            'credit_committee_name' => 'ARNEL S. ABALOS',
+            'chair_person_name' => 'FRANCIS DAVE T. RAMIREZ',
         ]);
 
         // 3. Create Offices

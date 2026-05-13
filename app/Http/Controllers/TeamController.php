@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\CommitteeSignatory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
@@ -188,4 +189,22 @@ class TeamController extends Controller
 
         return view('team.logs', compact('logs'));
     }
+
+    public function updateCommittee(Request $request)
+{
+    $request->validate([
+        'credit_committee_name' => 'required|string|max:255',
+        'chair_person_name' => 'required|string|max:255',
+    ]);
+
+    $committee = CommitteeSignatory::first();
+    
+    if (!$committee) {
+        CommitteeSignatory::create($request->all());
+    } else {
+        $committee->update($request->all());
+    }
+
+    return redirect()->back()->with('success', 'Committee names updated successfully.');
+}
 }

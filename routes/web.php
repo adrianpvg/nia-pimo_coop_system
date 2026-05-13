@@ -106,4 +106,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/logs', [TeamController::class, 'logs'])->name('team.logs'); 
         
     });
+
+    Route::put('/team/committee/update', [App\Http\Controllers\TeamController::class, 'updateCommittee'])->name('committee.update');
 });
