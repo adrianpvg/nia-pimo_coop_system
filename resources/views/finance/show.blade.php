@@ -254,9 +254,10 @@
                         <tbody class="border-top-0">
                             <tr style="background: rgba(0, 0, 0, 0.02);">
                                 <td></td>
-                                <td class="text-start ps-4 fw-bold text-secondary">Loan Granted</td>
+                                <td class="text-start ps-4 fw-bold text-secondary">Principal</td>
                                 <td></td><td></td><td></td>
-                                <td class="fw-bold text-dark">₱ {{ number_format($total_liability, 2) }}</td>
+                                {{-- Changed from $total_liability to $total_principal --}}
+                                <td class="fw-bold text-dark">₱ {{ number_format($total_principal, 2) }}</td>
                                 <td class="border-start"></td><td></td>
                             </tr>
                             
@@ -292,7 +293,8 @@
                                     <td class="text-muted">₱ {{ number_format($pay->amount_paid, 2) }}</td>
                                     <td class="text-muted">₱ {{ number_format($pay->interest, 2) }}</td>
                                     <td class="fw-medium text-primary">₱ {{ number_format($payTotal, 2) }}</td>
-                                    <td class="fw-bold text-dark">₱ {{ number_format($spRunBal, 2) }}</td>
+                                    {{-- Changed from $spRunBal to $spRemPrin --}}
+                                    <td class="fw-bold text-dark">₱ {{ number_format($spRemPrin, 2) }}</td>
                                     <td class="border-start text-success fw-medium">{{ $formattedPeriod }}</td>
                                     <td class="text-success fw-bold">₱ {{ number_format($payTotal, 2) }}</td>
                                 </tr>
@@ -337,7 +339,7 @@
                     <table class="table table-hover text-center align-middle mb-0">
                         <thead style="background: rgba(0, 122, 255, 0.05); border-bottom: 1px solid rgba(0, 122, 255, 0.1);">
                             <tr class="small text-uppercase text-secondary">
-                                <th class="py-3">Seq. No.</th>
+                                <th>Seq. No.</th>
                                 <th>Period Covered</th>
                                 <th>Principal</th>
                                 <th>Interest</th>

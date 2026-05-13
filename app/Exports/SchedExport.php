@@ -98,7 +98,7 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
 
         // --- SPECIAL LOAN LOGIC ---
         if ($this->loan->type === 'SPECIAL LOAN') {
-            $rows[] = ['', 'Loan Granted', '', '', '', $base_principal, $base_principal, '', ''];
+            $rows[] = ['', 'PRINCIPAL', '', '', '', $base_principal, $base_principal, '', ''];
 
             $runPrinBal = $base_principal; // Special balance tracks principal
             $remPrin = $base_principal;
@@ -219,15 +219,15 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
     public function columnWidths(): array
     {
         return [
-            'A' => 3.22,
+            'A' => 3.08,
             'B' => 19.65,
             'C' => 10.70,
             'D' => 9.40,
             'E' => 10.90,
             'F' => 10.50,
             'G' => 10.50,
-            'H' => 11.50, 
-            'I' => 9.20,
+            'H' => 10.20, 
+            'I' => 10.10,
         ];
     }
 
@@ -237,6 +237,9 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
         $sigRowStart = $lastRow + 1; 
         $nameRow = $sigRowStart + 2; 
         $titleRow = $nameRow + 1; 
+
+        // Conditionally set the font size for numbers depending on loan amount (>= 1,000,000)
+        $numFontSize = $this->loan->amount_granted >= 1000000 ? 10 : 11;
 
         $sheet->getPageSetup()->setPaperSize(PageSetup::PAPERSIZE_A4); 
         $sheet->getPageSetup()->setHorizontalCentered(true);
@@ -300,7 +303,8 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
             'C9' => [
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
                 'numberFormat' => ['formatCode' => '#,##0.00'],
-                'font' => ['name' => 'Arial', 'size' => 11]
+                // Apply dynamic font size to Amount of Loan
+                'font' => ['name' => 'Arial', 'size' => $numFontSize]
             ],
             'C10' => [
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
@@ -330,14 +334,28 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
             "A12:I{$lastRow}" => [
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
             ],
+            
+            // --- Apply dynamic font sizes & targeted alignments ---
+            "C14:G{$lastRow}" => [
+                'font' => ['name' => 'Arial', 'size' => $numFontSize]
+            ],
+            "I14:I{$lastRow}" => [
+                'font' => ['name' => 'Arial', 'size' => $numFontSize],
+                // Force column I to left align for numeric money
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT] 
+            ],
+            
             "A{$lastRow}:B{$lastRow}" => [
                 'font' => ['bold' => true, 'italic' => true, 'name' => 'Arial', 'size' => 11],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]
             ],
             "C{$lastRow}:I{$lastRow}" => [
-                'font' => ['bold' => true, 'name' => 'Arial', 'size' => 11],
+                // Totals Row gets bold and the dynamic font size
+                'font' => ['bold' => true, 'name' => 'Arial', 'size' => $numFontSize],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
             ],
+            // ------------------------------------------------------
+
             "B{$sigRowStart}:I{$sigRowStart}" => [
                 'font' => ['name' => 'Arial', 'size' => 11],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT]
