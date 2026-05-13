@@ -148,7 +148,7 @@
             <p class="small text-muted mb-0">Granted: {{ \Carbon\Carbon::parse($loan->date_of_application)->format('M d, Y') }}</p>
             
             <div class="mt-2 pt-2 border-top" style="border-color: rgba(0,0,0,0.05) !important;">
-                <p class="small text-muted mb-1">Applied Term: <span class="fw-semibold text-dark">{{ $loan->no_of_months }} Months</span></p>
+                <p class="small text-muted mb-1">Applied Term: <span class="fw-semibold text-dark">{{ fmod($loan->no_of_months, 1) !== 0.00 ? number_format($loan->no_of_months, 2) : round($loan->no_of_months) }} Months</span></p>
                 <div class="d-flex align-items-center justify-content-center gap-1">
                     <span class="small text-muted mb-0">Actual Term:</span>
                     
@@ -157,7 +157,7 @@
                             <i class="bi bi-exclamation-circle me-1"></i> Set Now
                         </button>
                     @else
-                        <span class="fw-bold text-success" style="font-size: 0.9rem;">{{ $loan->actual_months }} Months</span>
+                        <span class="fw-bold text-success" style="font-size: 0.9rem;">{{ fmod($loan->actual_months, 1) !== 0.00 ? number_format($loan->actual_months, 2) : round($loan->actual_months) }} Months</span>
                         <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle px-1 py-0 shadow-none border-0 ms-1" data-bs-toggle="modal" data-bs-target="#actualMonthsModal" title="Update Term">
                             <i class="bi bi-pencil-fill" style="font-size: 0.75rem;"></i>
                         </button>
@@ -175,8 +175,12 @@
                 if (!is_null($loan->actual_months) && $loan->schedules->isNotEmpty()) {
                     $total_interest = round($loan->schedules->sum('interest_due'), 2);
                 } else {
-                    // This mirrors exactly how Special Loans calculate their total interest dynamically
-                    $total_interest = round($total_principal * ($loan->interest_rate / 100), 2);
+                    if ($loan->type === 'CASAB') {
+                        $days = \Carbon\Carbon::parse($loan->payment_start)->diffInDays(\Carbon\Carbon::parse($loan->payment_end));
+                        $total_interest = round($total_principal * ($days / 30) * ($loan->base_interest / 100), 2);
+                    } else {
+                        $total_interest = round($total_principal * ($loan->interest_rate / 100), 2);
+                    }
                 }
 
                 $total_liability = round($total_principal + $total_interest, 2);
@@ -233,7 +237,6 @@
                     </div>
                 </div>
                 
-                <!-- NEW SPECIAL LOAN TABLE (Matching Regular Layout) -->
                 <div class="table-responsive mt-4">
                     <table class="table table-hover text-center align-middle mb-0">
                         <thead style="background: rgba(0, 122, 255, 0.05); border-bottom: 1px solid rgba(0, 122, 255, 0.1);">
@@ -278,7 +281,6 @@
                                     $total_int_sched += $pay->interest;
                                     $total_sum_sched += $payTotal;
 
-                                    // Dynamic Period Formatting
                                     $payDateObj = \Carbon\Carbon::parse($pay->payment_date);
                                     $monthName = $payDateObj->format('F');
                                     $formattedPeriod = strlen($monthName) <= 5 ? $payDateObj->format('F d, Y') : $payDateObj->format('M. d, Y');
@@ -330,7 +332,7 @@
                     </table>
                 </div>
             @else
-                <!-- ORIGINAL REGULAR LOAN SCHEDULE TABLE -->
+                <!-- REGULAR & CASAB LOAN SCHEDULE TABLE -->
                 <div class="table-responsive">
                     <table class="table table-hover text-center align-middle mb-0">
                         <thead style="background: rgba(0, 122, 255, 0.05); border-bottom: 1px solid rgba(0, 122, 255, 0.1);">
@@ -358,14 +360,16 @@
                                 @php
                                     $paymentRecord = null;
                                     
-                                    if ($loan->payment_preference === 'half_month') {
+                                    if ($loan->payment_preference === 'half_month' || $loan->type === 'CASAB') {
                                         $paymentRecord = $loan->payments->where('period_covered', $sched->period_end)->first();
+                                        $showPaymentThisRow = true;
                                     } else {
+                                        // Whole month grabs the month chunk. We only display it on the 2nd half schedule row
                                         $monthKey = \Carbon\Carbon::parse($sched->period_end)->format('Y-m');
                                         $paymentRecord = $loan->payments->where('period_covered', $monthKey)->first();
+                                        $showPaymentThisRow = ($index + 1) % 2 == 0; 
                                     }
 
-                                    // Custom Abbreviation logic for period
                                     $pStart = \Carbon\Carbon::parse($sched->period_start);
                                     $pEnd = \Carbon\Carbon::parse($sched->period_end);
 
@@ -391,18 +395,18 @@
                                     <td class="text-start ps-4 fw-semibold text-dark">
                                         {{ $startStr }}-{{ $endStr }}
                                     </td>
-                                    <td class="text-muted">₱ {{ number_format($sched->principal_due, 4) }}</td>
-                                    <td class="text-muted">₱ {{ number_format($sched->interest_due, 4) }}</td>
-                                    <td class="fw-medium text-primary">₱ {{ number_format($sched->total_due, 4) }}</td>
+                                    <td class="text-muted">₱ {{ number_format($sched->principal_due, 2) }}</td>
+                                    <td class="text-muted">₱ {{ number_format($sched->interest_due, 2) }}</td>
+                                    <td class="fw-medium text-primary">₱ {{ number_format($sched->total_due, 2) }}</td>
                                     <td class="fw-bold text-dark">
-                                        {{ ($index + 1) % 2 == 0 || $loan->payment_preference === 'whole_month' ? '₱ ' . number_format($sched->balance_after, 2) : '' }}
+                                        {{ ($index + 1) % 2 == 0 || $loan->type === 'CASAB' ? '₱ ' . number_format($sched->balance_after, 2) : '' }}
                                     </td>
                                     
                                     <td class="border-start text-success fw-medium">
-                                        {{ $payDateStr }}
+                                        {{ $paymentRecord && $showPaymentThisRow ? $payDateStr : '' }}
                                     </td>
                                     <td class="text-success fw-bold">
-                                        {{ $paymentRecord ? '₱ ' . number_format($paymentRecord->amount_paid + $paymentRecord->interest, 2) : '' }}
+                                        {{ $paymentRecord && $showPaymentThisRow ? '₱ ' . number_format($paymentRecord->amount_paid + $paymentRecord->interest, 2) : '' }}
                                     </td>
                                 </tr>
                             @empty
@@ -469,7 +473,6 @@
                             @php 
                                 $runBal -= ($pay->amount_paid + $pay->interest); 
                                 
-                                // Format the period nicely for the badge display
                                 $periodTxt = $pay->period_covered;
                                 if (str_starts_with($periodTxt, 'SPECIAL-')) {
                                     $formattedPeriod = 'Flexible / Custom';
@@ -562,21 +565,28 @@
                         </p>
                         
                         @php
-                            if ($loan->type === 'CASAB') {
-                                $maxTerm = 1;
-                            } elseif ($loan->type === 'SPECIAL LOAN') {
-                                $maxTerm = 6;
-                            } else {
-                                $maxTerm = 36;
-                            }
+                            $maxTerm = 36;
+                            if ($loan->type === 'SPECIAL LOAN') $maxTerm = 6;
                         @endphp
 
-                        <div class="form-inner-panel p-3 text-center mb-3">
-                            <label class="small text-secondary mb-2 fw-semibold">Actual Repayment Duration (Months)</label>
-                                <input type="number" name="actual_months" id="actual_months_input" class="form-control glass-input text-center fw-bold fs-4 text-primary w-50 mx-auto {{ $loan->type === 'CASAB' ? 'bg-light' : '' }}" value="{{ $loan->type === 'CASAB' ? 1 : old('actual_months', $loan->actual_months ?? $loan->no_of_months) }}" min="1" max="{{ $maxTerm }}" {{ $loan->type === 'CASAB' ? 'readonly' : 'required' }}>                            <div class="invalid-feedback mt-2" id="actual_months_error">
-                                Term cannot exceed {{ $maxTerm }} months for {{ $loan->type }}.
+                        @if($loan->type === 'CASAB')
+                            @php
+                                $days = \Carbon\Carbon::parse($loan->payment_start)->diffInDays(\Carbon\Carbon::parse($loan->payment_end));
+                                $calcMonths = round($days / 30, 2);
+                            @endphp
+                            <div class="alert alert-info border-0 rounded-4 shadow-sm p-3 mb-3" style="background: rgba(0, 122, 255, 0.05);">
+                                <i class="bi bi-info-circle-fill text-primary me-2"></i> The CASAB Term is automatically calculated as <strong>{{ $calcMonths }} Months</strong> ({{ $days }} days).
                             </div>
-                        </div>
+                            <input type="hidden" name="actual_months" value="{{ $calcMonths }}">
+                        @else
+                            <div class="form-inner-panel p-3 text-center mb-3">
+                                <label class="small text-secondary mb-2 fw-semibold">Actual Repayment Duration (Months)</label>
+                                <input type="number" name="actual_months" id="actual_months_input" class="form-control glass-input text-center fw-bold fs-4 text-primary w-50 mx-auto" value="{{ old('actual_months', $loan->actual_months ?? round($loan->no_of_months)) }}" min="1" max="{{ $maxTerm }}" required>
+                                <div class="invalid-feedback mt-2" id="actual_months_error">
+                                    Term cannot exceed {{ $maxTerm }} months for {{ $loan->type }}.
+                                </div>
+                            </div>
+                        @endif
 
                         <!-- Payment Preference Radio Buttons (Only for Regular Loans) -->
                         @if($loan->type === 'REGULAR SALARY LOAN')
@@ -588,7 +598,7 @@
                                     <p class="mb-2 text-muted fw-semibold">Casual</p>
                                     <div class="form-check d-inline-block text-start">
                                         <input class="form-check-input shadow-none" type="radio" name="payment_preference" id="pref_half" value="half_month" {{ ($loan->payment_preference ?? 'half_month') === 'half_month' ? 'checked' : '' }}>
-                                        <label class="form-check-label fw-medium text-dark" for="pref_half">Every 15th & 30th</label>
+                                        <label class="form-check-label fw-medium text-dark" for="pref_half">Every 15th & EOM</label>
                                     </div>
                                 </div>
 
@@ -658,10 +668,11 @@
                                 <div class="col-12 mt-4">
                                     <label class="small text-secondary mb-1 fw-semibold text-primary">Select Billing Month <span class="text-danger">*</span></label>
                                     @php
-                                        // Group schedules based on preference so the dropdown renders correctly
-                                        if ($loan->payment_preference === 'half_month') {
+                                        // For regular loans, payment preference dictates grouping
+                                        if ($loan->payment_preference === 'half_month' || $loan->type === 'CASAB') {
                                             $groupedSchedules = $loan->schedules->groupBy(function($s) { return $s->period_end; });
                                         } else {
+                                            // Combine halves into one month grouping for Permanent
                                             $groupedSchedules = $loan->schedules->groupBy(function($s) { return \Carbon\Carbon::parse($s->period_end)->format('Y-m'); });
                                         }
                                         
@@ -669,14 +680,12 @@
                                     @endphp
                                     
                                     @if($loan->type === 'SPECIAL LOAN')
-                                        <!-- For Special Loans, we just allow custom amount payments against the balance -->
                                         <input type="hidden" name="period_covered" value="SPECIAL-PAYMENT">
                                         <input type="hidden" name="is_special_payment" value="1">
                                         <div class="alert alert-info py-2 px-3 mb-0 small rounded-3 border border-info border-opacity-25 shadow-sm">
                                             Special loans allow flexible payments against the remaining balance.
                                         </div>
                                     @else
-                                        <!-- For Regular Loans, select the specific period. We removed sequential restriction. -->
                                         <select name="period_covered" id="period_covered" class="form-select glass-input fw-bold px-3 py-2" style="border-color: rgba(0, 122, 255, 0.4) !important;" required onchange="updatePaymentDisplay(this)">
                                             <option value="" disabled selected>Choose a billing period...</option>
                                             @foreach($groupedSchedules as $periodKey => $periodSchedules)
@@ -685,7 +694,7 @@
                                                     $interest = $periodSchedules->sum('interest_due');
                                                     $total = $principal + $interest;
                                                     
-                                                    if ($loan->payment_preference === 'half_month') {
+                                                    if ($loan->payment_preference === 'half_month' || $loan->type === 'CASAB') {
                                                         $start = \Carbon\Carbon::parse($periodSchedules->first()->period_start)->format('M d');
                                                         $end = \Carbon\Carbon::parse($periodSchedules->first()->period_end)->format('M d, Y');
                                                         $label = "{$start} - {$end}";
@@ -708,12 +717,10 @@
                                     <div class="p-3 rounded-4" style="background: rgba(0, 122, 255, 0.05); border: 1px solid rgba(0, 122, 255, 0.2);">
                                         
                                         @if($loan->type === 'SPECIAL LOAN')
-                                            <!-- Custom Amount Input for Special Loans -->
                                             <div class="mb-2">
                                                 <label class="small text-secondary mb-1 fw-bold">Enter Payment Amount <span class="text-danger">*</span></label>
                                                 <div class="input-group glass-input" style="padding: 0; overflow: hidden; border-color: rgba(0, 122, 255, 0.4); box-shadow: 0 4px 10px rgba(0, 122, 255, 0.05);">
                                                     <span class="input-group-text bg-transparent border-0 text-primary ps-3 pe-2 fw-bold fs-5">₱</span>
-                                                    <!-- Note: We check if there's a backend validation error specifically for this field -->
                                                     <input type="number" step="0.01" name="custom_amount_paid" class="form-control bg-transparent border-0 py-3 fw-bold fs-4 text-primary shadow-none {{ $errors->has('custom_amount_paid') ? 'is-invalid' : '' }}" placeholder="0.00" value="{{ old('custom_amount_paid') }}" max="{{ $bal }}" required>
                                                 </div>
                                                 @error('custom_amount_paid')
@@ -723,7 +730,6 @@
                                                 @enderror
                                             </div>
                                         @else
-                                            <!-- Readonly Amount Display for Regular Loans -->
                                             <div class="d-flex justify-content-between align-items-center mb-2">
                                                 <span class="fw-bold text-dark small" style="letter-spacing: 0.5px;">TOTAL AMOUNT DUE</span>
                                                 <span class="fs-4 fw-bold text-primary" id="display_total_due">₱ 0.00</span>
@@ -774,7 +780,6 @@
 
     <!-- DYNAMIC EDIT & DELETE PAYMENT MODALS -->
     @foreach($loan->payments as $pay)
-        
         <!-- EDIT PAYMENT MODAL -->
         <div class="modal fade" id="editPaymentModal{{ $pay->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
@@ -837,7 +842,6 @@
                 </div>
             </div>
         </div>
-        
     @endforeach
 </div> 
 @endpush
@@ -850,7 +854,6 @@
             document.body.appendChild(modalsContainer);
         }
 
-        // If backend validation failed specifically for custom amount, pop the modal open automatically
         @if($errors->has('custom_amount_paid'))
             var paymentModal = new bootstrap.Modal(document.getElementById('addPaymentModal'));
             paymentModal.show();
@@ -866,17 +869,22 @@
             actualMonthsForm.addEventListener('submit', function(event) {
                 let isValid = true;
                 let input = document.getElementById('actual_months_input');
-                let val = parseInt(input.value) || 0;
                 
-                let maxTerm = 36;
-                if ('{{ $loan->type }}' === 'SPECIAL LOAN') maxTerm = 6;
-                if ('{{ $loan->type }}' === 'CASAB') maxTerm = 1;
+                if (input) {
+                    let val = parseFloat(input.value) || 0;
+                    
+                    let maxTerm = 36;
+                    if ('{{ $loan->type }}' === 'SPECIAL LOAN') maxTerm = 6;
 
-                if (val < 1 || val > maxTerm) {
-                    input.classList.add('is-invalid');
-                    isValid = false;
-                } else {
-                    input.classList.remove('is-invalid');
+                    // CASAB is validated silently by backend math, input is hidden
+                    if ('{{ $loan->type }}' !== 'CASAB') {
+                        if (val < 1 || val > maxTerm) {
+                            input.classList.add('is-invalid');
+                            isValid = false;
+                        } else {
+                            input.classList.remove('is-invalid');
+                        }
+                    }
                 }
 
                 if (!isValid) {
@@ -885,17 +893,19 @@
                 }
             });
 
-            document.getElementById('actual_months_input').addEventListener('input', function() {
-                let val = parseInt(this.value) || 0;
-                
-                let maxTerm = 36;
-                if ('{{ $loan->type }}' === 'SPECIAL LOAN') maxTerm = 6;
-                if ('{{ $loan->type }}' === 'CASAB') maxTerm = 1;
-                
-                if(val >= 1 && val <= maxTerm) {
-                    this.classList.remove('is-invalid');
-                }
-            });
+            let actualMonthsInput = document.getElementById('actual_months_input');
+            if (actualMonthsInput) {
+                actualMonthsInput.addEventListener('input', function() {
+                    let val = parseFloat(this.value) || 0;
+                    
+                    let maxTerm = 36;
+                    if ('{{ $loan->type }}' === 'SPECIAL LOAN') maxTerm = 6;
+                    
+                    if(val >= 1 && val <= maxTerm) {
+                        this.classList.remove('is-invalid');
+                    }
+                });
+            }
         }
         
         let paymentForm = document.getElementById('paymentForm');
@@ -910,7 +920,6 @@
                     document.getElementById('or_number').classList.remove('is-invalid');
                 }
                 
-                // Only validate period_covered if it exists (Regular Loans)
                 let periodSelect = document.getElementById('period_covered');
                 if(periodSelect && periodSelect.value === '') {
                     periodSelect.classList.add('is-invalid');
@@ -919,7 +928,6 @@
                     periodSelect.classList.remove('is-invalid');
                 }
 
-                // Validate Custom Amount for Special Loans
                 let customAmtInput = document.querySelector('input[name="custom_amount_paid"]');
                 if (customAmtInput) {
                     let customAmt = parseFloat(customAmtInput.value) || 0;
@@ -939,7 +947,6 @@
                 }
             }, false);
 
-            // Clean custom amount error visually when typing
             let customAmtInput = document.querySelector('input[name="custom_amount_paid"]');
             if (customAmtInput) {
                 customAmtInput.addEventListener('input', function() {

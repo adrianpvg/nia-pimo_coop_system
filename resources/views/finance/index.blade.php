@@ -183,8 +183,6 @@
         font-weight: 700;
         color: var(--text-primary);
     }
-
-    
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
@@ -286,7 +284,9 @@
                             <td class="text-muted">₱{{ number_format($loan->interest_rate*.01*$loan->amount_granted, 2) }}</td>
                             <td class="text-muted">₱{{ number_format($loan->surcharge, 2) }}</td>
                             <td class="fw-bold text-success">₱{{ number_format($loan->net_proceeds, 2) }}</td>
-                            <td class="text-muted">{{ $loan->no_of_months }}</td>
+                            <td class="text-muted">
+                                {{ fmod($loan->no_of_months, 1) !== 0.00 ? number_format($loan->no_of_months, 2) : round($loan->no_of_months) }}
+                            </td>
                             <td class="text-muted">{{ $loan->payment_start }}</td>
                             <td class="text-muted">{{ $loan->payment_end }}</td>
                             <td>
@@ -463,22 +463,18 @@
                 
                 <div class="modal-body px-4 py-4">
                     
-                    @if($type === 'ALL' || !$type)
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <label class="fw-semibold text-secondary small mb-1 px-1">Select Loan Type <span class="text-danger">*</span></label>
-                                <select name="type" class="form-select glass-input fw-bold px-3 py-2" required>
-                                    <option value="" disabled selected>Choose loan category...</option>
-                                    <option value="REGULAR SALARY LOAN">Regular Salary Loan</option>
-                                    <option value="SPECIAL LOAN">Special Loan</option>
-                                    <option value="CASAB">CASAB Loan</option>
-                                </select>
-                                <div class="invalid-feedback ps-2">Please select a loan type.</div>
-                            </div>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <label class="fw-semibold text-secondary small mb-1 px-1">Select Loan Type <span class="text-danger">*</span></label>
+                            <select name="type" class="form-select glass-input fw-bold px-3 py-2" required>
+                                <option value="" disabled selected>Choose loan category...</option>
+                                <option value="REGULAR SALARY LOAN">Regular Salary Loan</option>
+                                <option value="SPECIAL LOAN">Special Loan</option>
+                                <option value="CASAB">CASAB Loan</option>
+                            </select>
+                            <div class="invalid-feedback ps-2">Please select a loan type.</div>
                         </div>
-                    @else
-                        <input type="hidden" name="type" value="{{ $type }}">
-                    @endif
+                    </div>
 
                     <div class="row g-4">
                         <div class="col-lg-4">
@@ -546,8 +542,8 @@
                                         <div class="invalid-feedback" id="amount_error" style="display: none;">Amount must be greater than zero.</div>
                                     </div>
 
-                                    <!-- NEW CASAB BONUS SELECTION (Hidden by default) -->
-                                    <div class="col-md-8" id="casab_date_col" style="display: none;">
+                                    <!-- CASAB BONUS SELECTION -->
+                                    <div class="col-md-4" id="casab_date_col" style="display: none;">
                                         <label class="small text-secondary mb-1 fw-semibold text-success">Select Bonus Deduction Date <span class="text-danger">*</span></label>
                                         <select id="casab_date_select" class="form-select glass-input px-3 py-2 fw-bold text-success border-success" onchange="syncCasabDate()"></select>
                                     </div>
@@ -562,55 +558,12 @@
                                         <input type="date" name="payment_end" id="end_date" class="form-control glass-input px-3 py-2" value="{{ \Carbon\Carbon::now()->addMonths(6)->format('Y-m-d') }}" min="2026-01-01" onchange="calculateFromDates()" required>
                                         <div class="invalid-feedback" id="end_date_error">Date must be logically after Start Date.</div>
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-4" id="months_col">
                                         <label class="small text-secondary mb-1 fw-semibold text-primary">Duration (Months) <i class="bi bi-pencil-square ms-1 small"></i></label>
                                         <input type="number" name="no_of_months" id="months" class="form-control glass-input px-3 py-2 fw-bold text-center border-primary" style="background: rgba(0, 122, 255, 0.05) !important;" oninput="calculateFromMonths()" min="1" max="36" step="1" required>
                                         <div class="invalid-feedback" id="months_error">Enter a valid term length.</div>
                                     </div>
 
-                                    <!-- <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold">Service Fee (0.5%)</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
-                                            <input type="text" id="service_fee_display" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
-                                            <input type="hidden" name="service_fee" id="service_fee">
-                                        </div>
-                                    </div> -->
-
-                                    <!-- <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold text-dark">Interest Rate (%)</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; border-color: rgba(0,0,0,0.1);">
-                                            <input type="number" step="0.01" id="interest_rate_input" name="interest_rate" class="form-control bg-transparent border-0 py-2 shadow-none text-center fw-bold" value="9" min="0" oninput="calculateAll()" required>
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-2 pe-3">%</span>
-                                        </div>
-                                        <div class="invalid-feedback">Enter a valid rate.</div>
-                                    </div> -->
-
-                                    <!-- <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold text-dark">Interest Rate (%)</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <input type="number" step="0.01" id="interest_rate_input" name="interest_rate" class="form-control bg-transparent border-0 py-2 shadow-none text-center fw-bold" value="0" readonly required>
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-2 pe-3">%</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold">Interest Amount</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
-                                            <input type="text" id="interest_display" class="form-control bg-transparent border-0 py-2 shadow-none fw-bold text-dark" readonly>
-                                            <input type="hidden" name="interest" id="interest">
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold">Surcharge</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
-                                            <input type="text" id="surcharge_display" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
-                                            <input type="hidden" name="surcharge" id="surcharge">
-                                        </div>
-                                    </div> -->
                                     <div class="col-md-2 mt-3">
                                         <label class="small text-secondary mb-1 fw-semibold">Service <small>(0.5%)</small></label>
                                         <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
@@ -714,17 +667,45 @@
                        "<'row mt-3'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>"
             });
         }
+
+        // Reset Form on Modal Close
+        $('#createLoanModal').on('hidden.bs.modal', function () {
+            $('#loanForm')[0].reset();
+            
+            $('#loanForm').removeClass('was-validated');
+            $('.is-invalid').removeClass('is-invalid');
+            $('.invalid-group').removeClass('invalid-group');
+            $('#amount_error').hide();
+
+            $('#amount_display').val('');
+            $('#service_fee_display').val('');
+            $('#interest_display').val('');
+            $('#surcharge_display').val('');
+            $('#net_proceeds_display').val('₱ 0.00');
+            $('#total_pay_display').val('₱ 0.00');
+
+            updateLoanTypeConstraints();
+        });
         
         syncDate(); 
 
-        // --- DYNAMIC FORM LOGIC BASED ON LOAN TYPE ---
         let loanTypeSelect = document.querySelector('select[name="type"]');
         let appDateInput = document.getElementById('date_applied');
+
+        function addDaysToDateStr(dateStr, days) {
+            let d = new Date(dateStr);
+            d.setDate(d.getDate() + days);
+            let year = d.getFullYear();
+            let month = String(d.getMonth() + 1).padStart(2, '0');
+            let day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
 
         function updateLoanTypeConstraints() {
             if (!loanTypeSelect) return;
             let type = loanTypeSelect.value;
             let monthsInput = document.getElementById('months');
+            let monthsCol = document.getElementById('months_col');
             let startDateCol = document.getElementById('start_date_col');
             let endDateCol = document.getElementById('end_date_col');
             let casabDateCol = document.getElementById('casab_date_col');
@@ -737,47 +718,53 @@
 
             if (type === 'CASAB') {
                 monthsInput.value = 1;
-                monthsInput.setAttribute('max', '1');
-                monthsInput.setAttribute('readonly', true);
-                monthsInput.classList.add('bg-light');
-                if(errorText) errorText.innerText = "CASAB loans are fixed at 1 month.";
                 
-                // Hide standard dates, show specific CASAB date selector
-                startDateCol.style.display = 'none';
-                endDateCol.style.display = 'none';
+                if (monthsCol) monthsCol.style.display = 'none';
+                
+                // Show dates but make them readonly
+                startDateCol.style.display = 'block';
+                endDateCol.style.display = 'block';
+                document.getElementById('start_date').setAttribute('readonly', true);
+                document.getElementById('end_date').setAttribute('readonly', true);
+                document.getElementById('start_date').classList.add('bg-light');
+                document.getElementById('end_date').classList.add('bg-light');
+                
+                // Auto calc CASAB payment start: App Date + 1 Day
+                document.getElementById('start_date').value = addDaysToDateStr(appDateStr, 1);
+
                 if(casabDateCol) casabDateCol.style.display = 'block';
                 
                 let select = document.getElementById('casab_date_select');
                 if(select) {
                     select.innerHTML = '';
                     
-                    // Generate logical bonus dates (May 16 and Nov 16)
                     let options = [];
-                    let midYear1 = new Date(year, 4, 16); // May 16 Current Year
-                    let yearEnd1 = new Date(year, 10, 16); // Nov 16 Current Year
-                    let midYear2 = new Date(year + 1, 4, 16); // May 16 Next Year
-                    let yearEnd2 = new Date(year + 1, 10, 16); // Nov 16 Next Year
+                    let midYear1 = new Date(year, 4, 16); 
+                    let yearEnd1 = new Date(year, 10, 16);
+                    let midYear2 = new Date(year + 1, 4, 16); 
+                    let yearEnd2 = new Date(year + 1, 10, 16);
                     
-                    if (midYear1 >= appDate) options.push({ date: midYear1, label: "Mid-Year Bonus (May 16, " + year + ")" });
-                    if (yearEnd1 >= appDate) options.push({ date: yearEnd1, label: "Year-End Bonus (Nov 16, " + year + ")" });
-                    options.push({ date: midYear2, label: "Mid-Year Bonus (May 16, " + (year + 1) + ")" }); 
-                    options.push({ date: yearEnd2, label: "Year-End Bonus (Nov 16, " + (year + 1) + ")" });
+                    if (midYear1 >= appDate) options.push({ date: midYear1, label: "Mid-Year May 16, " + year });
+                    if (yearEnd1 >= appDate) options.push({ date: yearEnd1, label: "Year-End Nov 16, " + year });
+                    options.push({ date: midYear2, label: "Mid-Year May 16, " + (year + 1) }); 
+                    options.push({ date: yearEnd2, label: "Year-End Nov 16, " + (year + 1) });
 
-                    // Only show the next 2 valid upcoming periods
                     options.slice(0, 2).forEach(opt => {
-                        let tzOffset = opt.date.getTimezoneOffset() * 60000;
-                        let localISOTime = (new Date(opt.date - tzOffset)).toISOString().slice(0, 10);
+                        let yearStr = opt.date.getFullYear();
+                        let monthStr = String(opt.date.getMonth() + 1).padStart(2, '0');
+                        let dayStr = String(opt.date.getDate()).padStart(2, '0');
                         
                         let element = document.createElement('option');
-                        element.value = localISOTime;
+                        element.value = `${yearStr}-${monthStr}-${dayStr}`;
                         element.text = opt.label;
                         select.appendChild(element);
                     });
                     
-                    window.syncCasabDate(); // Set hidden inputs & recalculate
+                    window.syncCasabDate(); 
                 }
                 
             } else if (type === 'SPECIAL LOAN') {
+                if (monthsCol) monthsCol.style.display = 'block';
                 monthsInput.removeAttribute('readonly');
                 monthsInput.classList.remove('bg-light');
                 monthsInput.setAttribute('max', '6');
@@ -789,10 +776,15 @@
                 
                 startDateCol.style.display = 'block';
                 endDateCol.style.display = 'block';
+                document.getElementById('start_date').removeAttribute('readonly');
+                document.getElementById('end_date').removeAttribute('readonly');
+                document.getElementById('start_date').classList.remove('bg-light');
+                document.getElementById('end_date').classList.remove('bg-light');
+                
                 if(casabDateCol) casabDateCol.style.display = 'none';
                 syncDate();
             } else {
-                // REGULAR SALARY LOAN
+                if (monthsCol) monthsCol.style.display = 'block';
                 monthsInput.removeAttribute('readonly');
                 monthsInput.classList.remove('bg-light');
                 monthsInput.setAttribute('max', '36');
@@ -804,18 +796,20 @@
                 
                 startDateCol.style.display = 'block';
                 endDateCol.style.display = 'block';
+                document.getElementById('start_date').removeAttribute('readonly');
+                document.getElementById('end_date').removeAttribute('readonly');
+                document.getElementById('start_date').classList.remove('bg-light');
+                document.getElementById('end_date').classList.remove('bg-light');
+
                 if(casabDateCol) casabDateCol.style.display = 'none';
                 syncDate();
             }
             calculateAll();
         }
 
-        // Globally scoped so the HTML onchange attribute can reach it
         window.syncCasabDate = function() {
             let select = document.getElementById('casab_date_select');
             if(select && select.value) {
-                // Backend requires payment_start and payment_end to be the same for CASAB
-                document.getElementById('start_date').value = select.value;
                 document.getElementById('end_date').value = select.value;
                 calculateAll();
             }
@@ -824,7 +818,6 @@
         if(loanTypeSelect) loanTypeSelect.addEventListener('change', updateLoanTypeConstraints);
         if(appDateInput) appDateInput.addEventListener('change', updateLoanTypeConstraints);
         
-        // Trigger constraints immediately on load to set proper max values
         updateLoanTypeConstraints();
         
         if(document.getElementById('loanDistributionChart')) {
@@ -859,7 +852,6 @@
             });
         }
 
-        // Form Validation Interceptor
         document.getElementById('loanForm').addEventListener('submit', function(event) {
             let isValid = true;
             
@@ -881,7 +873,6 @@
                 document.getElementById('amount_error').style.display = 'none';
             }
 
-            // DYNAMIC DURATION VALIDATION
             let type = loanTypeSelect ? loanTypeSelect.value : '';
             let maxTerm = 36;
             if (type === 'SPECIAL LOAN') maxTerm = 6;
@@ -898,7 +889,7 @@
             let dates = ['date_applied', 'start_date', 'end_date'];
             dates.forEach(function(id) {
                 let el = document.getElementById(id);
-                // Allow display:none elements to bypass direct value validation if CASAB
+                // Allow specific dynamic skips 
                 if (type === 'CASAB' && (id === 'start_date' || id === 'end_date')) return;
                 
                 if (el.value < '2026-01-01') {
@@ -956,9 +947,17 @@
                 document.getElementById('date_applied').value = '2026-01-01';
                 appliedDate = '2026-01-01';
             }
-            document.getElementById('start_date').value = appliedDate;
             document.getElementById('date_applied').classList.remove('is-invalid');
-            calculateFromDates(); 
+            
+            let typeSelect = document.querySelector('select[name="type"]');
+            if (typeSelect && typeSelect.value === 'CASAB') {
+                // For CASAB start date is applied date + 1
+                document.getElementById('start_date').value = addDaysToDateStr(appliedDate, 1);
+                window.syncCasabDate(); 
+            } else {
+                document.getElementById('start_date').value = appliedDate;
+                calculateFromDates(); 
+            }
         }
     }
 
@@ -986,7 +985,12 @@
             let eMonth = parseInt(eParts[1]);
             let eDay = parseInt(eParts[2]);
 
-            // For CASAB, dates will be identical, so this drops into months = 1
+            let typeSelect = document.querySelector('select[name="type"]');
+            if (typeSelect && typeSelect.value === 'CASAB') {
+                calculateAll();
+                return;
+            }
+
             if (endInput <= startInput) {
                 document.getElementById('months').value = 1;
                 calculateFromMonths(); 
@@ -1001,12 +1005,8 @@
                     }
                 }
                 
-                let typeSelect = document.querySelector('select[name="type"]');
                 let maxTerm = 36;
-                if (typeSelect) {
-                    if(typeSelect.value === 'SPECIAL LOAN') maxTerm = 6;
-                    if(typeSelect.value === 'CASAB') maxTerm = 1;
-                }
+                if (typeSelect && typeSelect.value === 'SPECIAL LOAN') maxTerm = 6;
 
                 if (months < 1) months = 1;
                 if (months > maxTerm) months = maxTerm;
@@ -1035,7 +1035,10 @@
 
         if (typeSelect) {
             if(typeSelect.value === 'SPECIAL LOAN') maxTerm = 6;
-            if(typeSelect.value === 'CASAB') maxTerm = 1;
+            if(typeSelect.value === 'CASAB') {
+                calculateAll();
+                return; // Month is locked to 1
+            }
         }
 
         if (monthsInput > maxTerm) {
@@ -1091,25 +1094,20 @@
         // DYNAMIC INTEREST CALCULATION
         if (type === 'CASAB') {
             // CASAB FORMULA: Principal * (total days covered / 30) * base_interest
-            let appDateStr = document.getElementById('date_applied').value || new Date().toISOString().slice(0, 10);
-            let bonusDateSelect = document.getElementById('casab_date_select');
-            let bonusDateStr = (bonusDateSelect && bonusDateSelect.value) ? bonusDateSelect.value : appDateStr;
+            let appDateStr = document.getElementById('start_date').value;
+            let bonusDateStr = document.getElementById('end_date').value;
             
             let appDate = new Date(appDateStr);
             let bonusDate = new Date(bonusDateStr);
             
-            // Calculate exact days between application date and bonus date
             let timeDiff = bonusDate.getTime() - appDate.getTime();
             let totalDays = timeDiff > 0 ? Math.ceil(timeDiff / (1000 * 3600 * 24)) : 0;
             
             totalExpectedInterest = amount * (totalDays / 30) * monthlyRate;
 
         } else if (type === 'SPECIAL LOAN') {
-            // Straight interest computation for non-amortized items
             totalExpectedInterest = amount * monthlyRate * months;
-            
         } else {
-            // Amortized interest logic for Regular Salary Loan
             if (amount > 0 && totalPeriods > 0) {
                 let basePrincipalDue = amount / totalPeriods;
                 let runningBalance = amount;

@@ -434,7 +434,7 @@
                                 $maxTerm = 36;
                             }
                         @endphp
-                        
+
                         <div class="form-inner-panel p-3 text-center mb-3">
                             <label class="small text-secondary mb-2 fw-semibold">Actual Repayment Duration (Months)</label>
                                 <input type="number" name="actual_months" id="actual_months_input" class="form-control glass-input text-center fw-bold fs-4 text-primary w-50 mx-auto {{ $loan->type === 'CASAB' ? 'bg-light' : '' }}" value="{{ $loan->type === 'CASAB' ? 1 : old('actual_months', $loan->actual_months ?? $loan->no_of_months) }}" min="1" max="{{ $maxTerm }}" {{ $loan->type === 'CASAB' ? 'readonly' : 'required' }}>                            <div class="invalid-feedback mt-2" id="actual_months_error">
@@ -453,7 +453,7 @@
                                     <p class="mb-2 text-muted fw-semibold">Casual</p>
                                     <div class="form-check d-inline-block text-start">
                                         <input class="form-check-input shadow-none" type="radio" name="payment_preference" id="pref_half" value="half_month" {{ ($loan->payment_preference ?? 'half_month') === 'half_month' ? 'checked' : '' }}>
-                                        <label class="form-check-label fw-medium text-dark" for="pref_half">Every 15th & 30th</label>
+                                        <label class="form-check-label fw-medium text-dark" for="pref_half">Every 15th & EOM</label>
                                     </div>
                                 </div>
 

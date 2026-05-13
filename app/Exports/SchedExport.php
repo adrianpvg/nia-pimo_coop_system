@@ -73,7 +73,7 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
             ['PAYING PERIOD :', '', $payingPeriod, '', '', '', '', '', ''],
             ['', '', '', '', '', '', '', '', ''],
             ['Amount of Loan   :', '', $this->loan->amount_granted, '', '', '', '', '', ''],
-            ['TERM:', '', $this->loan->no_of_months . ' mos', '', '', '', '', '', ''], 
+            ['TERM:', '', fmod($this->loan->no_of_months, 1) !== 0.00 ? number_format($this->loan->no_of_months, 2) . ' mos' : round($this->loan->no_of_months) . ' mos', '', '', '', '', '', ''], 
             ['Installment Schedule :', '', '', '', '', '', '', '', ''],
             ['SEQ. NO.', 'PERIOD COVERED', 'PRINCIPAL', 'INTEREST', 'TOTAL', '', 'PAYMENTS', '', ''],
             ['', '', '', '', '(Principal + Interest)', 'BALANCE', 'BALANCE', 'DATE', 'AMOUNT'],
@@ -87,21 +87,26 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
         if (!is_null($this->loan->actual_months) && $this->loan->schedules->isNotEmpty()) {
             $base_interest = round($this->loan->schedules->sum('interest_due'), 2);
         } else {
-            $base_interest = round($base_principal * ($this->loan->interest_rate / 100), 2);
+            if ($this->loan->type === 'CASAB') {
+                $days = Carbon::parse($this->loan->payment_start)->diffInDays(Carbon::parse($this->loan->payment_end));
+                $base_interest = round($base_principal * ($days / 30) * ($this->loan->base_interest / 100), 2);
+            } else {
+                $base_interest = round($base_principal * ($this->loan->interest_rate / 100), 2);
+            }
         }
         $total_liability = round($base_principal + $base_interest, 2);
 
         // --- SPECIAL LOAN LOGIC ---
         if ($this->loan->type === 'SPECIAL LOAN') {
-            $rows[] = ['', 'Loan Granted', '', '', '', $total_liability, $total_liability, '', ''];
+            $rows[] = ['', 'Loan Granted', '', '', '', $base_principal, $base_principal, '', ''];
 
-            $runBal = $total_liability;
+            $runPrinBal = $base_principal; // Special balance tracks principal
             $remPrin = $base_principal;
             $remInt = $base_interest;
 
             foreach ($this->loan->payments as $index => $pay) {
                 $payTotal = $pay->amount_paid + $pay->interest;
-                $runBal -= $payTotal;
+                $runPrinBal -= $pay->amount_paid;
                 $remPrin -= $pay->amount_paid;
                 $remInt -= $pay->interest;
 
@@ -113,8 +118,8 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
                     $pay->amount_paid,
                     $pay->interest,
                     $payTotal,
-                    max(0, $runBal),
-                    max(0, $runBal),
+                    max(0, $runPrinBal),
+                    max(0, $runPrinBal),
                     $paymentDateStr, 
                     $payTotal
                 ];
@@ -124,28 +129,27 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
                 $totalSum  += $payTotal;
             }
 
-            if ($runBal > 0) {
+            if ($remPrin > 0 || $remInt > 0) {
                 $remPrin = max(0, $remPrin);
                 $remInt = max(0, $remInt);
-                $runBal = max(0, $runBal);
 
                 $rows[] = [
                     count($this->loan->payments) + 1,
                     $this->formatAbbreviatedDate($this->loan->payment_end) . ' (Due)',
                     $remPrin,
                     $remInt,
-                    $runBal,
+                    $remPrin + $remInt,
                     0, 
                     '', '', '' 
                 ];
 
                 $totalPrin += $remPrin;
                 $totalInt  += $remInt;
-                $totalSum  += $runBal;
+                $totalSum  += ($remPrin + $remInt);
             }
 
         } else {
-            // --- REGULAR LOAN LOGIC ---
+            // --- REGULAR / CASAB LOAN LOGIC ---
             $rows[] = ['', 'Principal', '', '', '', $this->loan->amount_granted, $this->loan->amount_granted, '', ''];
 
             $actualPrinBal = round($this->loan->amount_granted, 2);
@@ -153,17 +157,22 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
             foreach ($this->loan->schedules as $index => $sched) {
                 $period = $this->formatAbbreviatedPeriod($sched->period_start, $sched->period_end);
                 
-                $showBalance = ($this->loan->payment_preference === 'whole_month') || (($index + 1) % 2 == 0);
+                $isWholeMonth = $this->loan->payment_preference === 'whole_month';
+                $isCasab = $this->loan->type === 'CASAB';
                 
-                // Return float or empty string to ensure formatting applies cleanly and avoids #####
-                $balance = $showBalance ? max(0, $sched->balance_after) : '';
+                // Show balance only if Casab, Half_month, or the 2nd Row (EOM) of Whole_month
+                $showBalance = $isCasab || !$isWholeMonth || (($index + 1) % 2 == 0);
+                $balanceDisplay = $showBalance ? max(0, $sched->balance_after) : '';
                 
                 $paymentRecord = null;
-                if ($this->loan->payment_preference === 'half_month') {
+                if ($isCasab || !$isWholeMonth) {
                     $paymentRecord = $this->loan->payments->where('period_covered', $sched->period_end)->first();
                 } else {
                     $monthKey = Carbon::parse($sched->period_end)->format('Y-m');
                     $paymentRecord = $this->loan->payments->where('period_covered', $monthKey)->first();
+                    if (($index + 1) % 2 != 0) {
+                        $paymentRecord = null; 
+                    }
                 }
 
                 if ($paymentRecord) {
@@ -171,8 +180,8 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
                     $actualPrinBal -= $paymentRecord->amount_paid;
                     $payDate = $this->formatAbbreviatedDate($paymentRecord->payment_date);
                     
-                    // Display balance on exact row of payment
-                    $payBalDisplay = max(0, $actualPrinBal);
+                    // Payments balance = whatever balance is designated for the row
+                    $payBalDisplay = $balanceDisplay !== '' ? $balanceDisplay : max(0, $sched->balance_after);
                 } else {
                     $payAmt = '';
                     $payDate = '';
@@ -185,7 +194,7 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
                     $sched->principal_due,
                     $sched->interest_due,
                     $sched->total_due,
-                    $balance,
+                    $balanceDisplay,
                     $payBalDisplay, 
                     $payDate, 
                     $payAmt 
@@ -217,7 +226,7 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
             'E' => 10.90,
             'F' => 10.50,
             'G' => 10.50,
-            'H' => 8.10, 
+            'H' => 11.50, 
             'I' => 9.20,
         ];
     }
@@ -314,7 +323,7 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
                 'font' => ['name' => 'Cambria', 'size' => 11],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
             ],
-            "H14:H{$lastRow}" => [ // Payment Date Column Font Constraints
+            "H14:H{$lastRow}" => [ 
                 'font' => ['name' => 'Cambria', 'size' => 8],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER]
             ],
@@ -339,7 +348,6 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
             ]
         ];
         
-        // This format safely handles floats, converting zeroes to '0.00' avoiding overflow glitches
         $sheet->getStyle("C14:I{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.00_-');
 
         return $styles;
