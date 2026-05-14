@@ -182,8 +182,13 @@ class TeamController extends Controller
             ->get()
             ->map(function ($log) {
                 // Convert UNIX timestamp to readable date/time
-                $log->formatted_activity = Carbon::createFromTimestamp($log->last_activity)->format('M d, Y - h:i A');
-                $log->time_ago = Carbon::createFromTimestamp($log->last_activity)->diffForHumans();
+                $log->formatted_activity = Carbon::createFromTimestamp($log->last_activity)
+                            ->timezone(config('app.timezone'))
+                            ->format('M d, Y - h:i A');
+                            
+                $log->time_ago = Carbon::createFromTimestamp($log->last_activity)
+                                    ->timezone(config('app.timezone'))
+                                    ->diffForHumans();
                 return $log;
             });
 

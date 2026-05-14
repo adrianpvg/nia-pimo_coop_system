@@ -44,9 +44,11 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 3. Create Offices
-        Office::create(['name' => 'PIMO']);
+        
         Office::create(['name' => 'ADRIS']);
+        Office::create(['name' => 'ASRIS']);
         Office::create(['name' => 'LARIS']);
-        Office::create(['name' => 'R1']);
+        Office::create(['name' => 'PIMO']);
+        Office::create(['name' => 'RO1']);
     }
 }

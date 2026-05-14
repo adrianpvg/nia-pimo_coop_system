@@ -189,11 +189,11 @@
     <div> 
         @if(Auth::check() && Auth::user()->type === 'admin')
             <div class="d-flex gap-2"> 
-                <button class="btn btn-outline-dark shadow-sm px-4" style="border-radius: 12px; background: rgba(255,255,255,0.6); backdrop-filter: blur(10px);" data-bs-toggle="modal" data-bs-target="#editCommitteeModal">
+                <button class="btn btn-outline-dark shadow-sm px-4" style="border-radius: 12px;" data-bs-toggle="modal" data-bs-target="#editCommitteeModal">
                     <i class="bi bi-people-fill me-2"></i> Edit Committee
                 </button>
                 
-                <button class="btn btn-dark shadow-sm px-4" style="border-radius: 12px;" data-bs-toggle="modal" data-bs-target="#addMemberModal">
+                <button class="btn btn-outline-dark shadow-sm px-4" style="border-radius: 12px;" data-bs-toggle="modal" data-bs-target="#addMemberModal">
                     <i class="bi bi-person-plus-fill me-2"></i> Add Member
                 </button>
             </div>

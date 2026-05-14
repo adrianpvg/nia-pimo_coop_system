@@ -47,8 +47,8 @@
                 <tr class="text-secondary small text-uppercase">
                     <th>User</th>
                     <th>Role</th>
-                    <th>IP Address</th>
-                    <th>Device / Browser</th>
+                    <!-- <th>IP Address</th>
+                    <th>Device / Browser</th> -->
                     <th>Last Activity</th>
                     <th>Status</th>
                 </tr>
@@ -65,10 +65,10 @@
                             {{ ucfirst($log->type) }}
                         </span>
                     </td>
-                    <td class="font-monospace text-muted small">{{ $log->ip_address ?? 'Unknown' }}</td>
+                    <!-- <td class="font-monospace text-muted small">{{ $log->ip_address ?? 'Unknown' }}</td>
                     <td class="small text-muted agent-text" title="{{ $log->user_agent }}">
                         <i class="bi bi-display me-1"></i> {{ $log->user_agent ?? 'Unknown Device' }}
-                    </td>
+                    </td> -->
                     <td>
                         <div class="fw-medium text-dark">{{ $log->formatted_activity }}</div>
                     </td>
