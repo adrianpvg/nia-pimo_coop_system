@@ -25,7 +25,6 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password123'),
             'type' => 'admin', 
             'is_active' => true, // <-- EDIT: Allow immediate login
-            'email_verified_at' => now(), // <-- EDIT: Skip email verification step
         ]);
 
         // 2. Create the Member Account (Active & Verified)
@@ -35,7 +34,6 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password123'), 
             'type' => 'member', 
             'is_active' => true, // <-- EDIT: Allow immediate login
-            'email_verified_at' => now(), // <-- EDIT: Skip email verification step
         ]);
 
         CommitteeSignatory::create([
@@ -50,5 +48,6 @@ class DatabaseSeeder extends Seeder
         Office::create(['name' => 'LARIS']);
         Office::create(['name' => 'PIMO']);
         Office::create(['name' => 'RO1']);
+        Office::create(['name' => 'SFDRIS']);
     }
 }

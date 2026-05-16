@@ -78,15 +78,17 @@ Route::middleware('auth')->group(function () {
         Route::post('/payment', [FinanceController::class, 'addPayment'])->name('finance.payment.store');
         
         Route::get('/export/{type?}', [FinanceController::class, 'export'])->name('finance.export');
+        Route::get('/export-regular-sched', [FinanceController::class, 'exportRegularSched'])->name('finance.export.regular.sched');
         Route::delete('/payment/{id}', [FinanceController::class, 'deletePayment'])->name('finance.payment.destroy');
     
         // NEW: Route to update a payment's OR number
         Route::put('/payment/{id}', [FinanceController::class, 'updatePayment'])->name('finance.payment.update');
         
-        // NEW: Route to delete an entire loan
+        Route::put('/{id}/update', [FinanceController::class, 'update'])->name('finance.update');
         Route::delete('/loan/{id}', [FinanceController::class, 'destroyLoan'])->name('finance.destroy');
         Route::put('/loan/{id}/actual-months', [FinanceController::class, 'updateActualMonths'])->name('finance.update_actual_months');
         Route::get('/loan/{id}/export-sched', [FinanceController::class, 'exportSched'])->name('finance.export_sched');
+        
     });
 
     // ==========================================

@@ -7,15 +7,18 @@ use App\Models\CommitteeSignatory;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
+use Maatwebsite\Excel\Concerns\WithDrawings;
+use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 use Carbon\Carbon;
 
-class SchedExport implements FromArray, WithStyles, WithColumnWidths
+class SchedExport implements FromArray, WithStyles, WithColumnWidths, WithDrawings
 {
     protected $loan;
+    public $mergedCustomCells = [];
 
     public function __construct(Loan $loan)
     {
@@ -48,8 +51,30 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
         return "$sFormat-$eFormat";
     }
 
+    public function drawings()
+    {
+        $drawingLeft = new Drawing();
+        $drawingLeft->setName('Left Header');
+        $drawingLeft->setDescription('NIA Cooperative Left Header');
+        $drawingLeft->setPath(public_path('images/left-header.png'));
+        $drawingLeft->setHeight(75);
+        $drawingLeft->setCoordinates('A1');
+
+        $drawingRight = new Drawing();
+        $drawingRight->setName('Right Header');
+        $drawingRight->setDescription('NIA Cooperative Right Header');
+        $drawingRight->setPath(public_path('images/right-header.png'));
+        $drawingRight->setHeight(45);
+        $drawingRight->setCoordinates('I1'); 
+        $drawingRight->setOffsetX(30); 
+        $drawingRight->setOffsetY(8); 
+        return [$drawingLeft, $drawingRight];
+    }
+
     public function array(): array
     {
+        $this->mergedCustomCells = [];
+        
         $paymentStart = Carbon::parse($this->loan->payment_start);
         $paymentEnd = Carbon::parse($this->loan->payment_end);
         
@@ -64,7 +89,13 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
 
         $payingPeriod = $sFormat . ' - ' . $eFormat;
 
+        $payBalHeader = ($this->loan->type === 'REGULAR SALARY LOAN' && $this->loan->employee_type === 'Permanent') ? 'TOTAL' : 'BALANCE';
+
         $rows = [
+            ['', '', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', '', ''],
+            ['', '', '', '', '', '', '', '', ''],
             ['NIA REGION 1 MULTIPURPOSE COOPERATIVE', '', '', '', '', '', '', '', ''],
             ['BAYAOAS, URDANETA CITY, PANGASINAN', '', '', '', '', '', '', '', ''],
             ['COMPUTATION SHEET (' . $this->loan->type . ')', '', '', '', '', '', '', '', ''],
@@ -76,13 +107,14 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
             ['Amount of Loan   :', '', $this->loan->amount_granted, '', '', '', '', '', ''],
             ['TERM:', '', fmod($this->loan->no_of_months, 1) !== 0.00 ? number_format($this->loan->no_of_months, 2) . ' mos' : round($this->loan->no_of_months) . ' mos', '', '', '', '', '', ''], 
             ['Installment Schedule :', '', '', '', '', '', '', '', ''],
-            ['SEQ. NO.', 'PERIOD COVERED', 'PRINCIPAL', 'INTEREST', 'TOTAL', '', 'PAYMENTS', '', ''],
-            ['', '', '', '', '(Principal + Interest)', 'BALANCE', 'BALANCE', 'DATE', 'AMOUNT'],
+            ['SEQ. NO.', 'PERIOD COVERED', 'PRINCIPAL', 'INTEREST', 'TOTAL', 'BALANCE', 'PAYMENTS', '', ''],
+            ['', '', '', '', '(Principal + Interest)', '', $payBalHeader, 'DATE', 'AMOUNT'],
         ];
 
         $totalPrin = 0;
         $totalInt = 0;
         $totalSum = 0;
+        $totalPaymentSum = 0;
 
         $base_principal = round($this->loan->amount_granted, 2);
         if (!is_null($this->loan->actual_months) && $this->loan->schedules->isNotEmpty()) {
@@ -97,11 +129,10 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
         }
         $total_liability = round($base_principal + $base_interest, 2);
 
-        // --- SPECIAL LOAN LOGIC ---
         if ($this->loan->type === 'SPECIAL LOAN') {
-            $rows[] = ['', 'PRINCIPAL', '', '', '', $base_principal, $base_principal, '', ''];
+            $rows[] = ['', 'PRINCIPAL', '', '', '', $base_principal, '', '', ''];
 
-            $runPrinBal = $base_principal; // Special balance tracks principal
+            $runPrinBal = $base_principal; 
             $remPrin = $base_principal;
             $remInt = $base_interest;
 
@@ -112,6 +143,9 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
                 $remInt -= $pay->interest;
 
                 $paymentDateStr = $this->formatAbbreviatedDate($pay->payment_date);
+                
+                $formattedRunPrinBal = max(0, $runPrinBal);
+                if ($formattedRunPrinBal == 0) $formattedRunPrinBal = '-';
 
                 $rows[] = [
                     $index + 1,
@@ -119,8 +153,8 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
                     $pay->amount_paid,
                     $pay->interest,
                     $payTotal,
-                    max(0, $runPrinBal),
-                    max(0, $runPrinBal),
+                    $formattedRunPrinBal,
+                    $formattedRunPrinBal,
                     $paymentDateStr, 
                     $payTotal
                 ];
@@ -128,6 +162,7 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
                 $totalPrin += $pay->amount_paid;
                 $totalInt  += $pay->interest;
                 $totalSum  += $payTotal;
+                $totalPaymentSum += $payTotal;
             }
 
             if ($remPrin > 0 || $remInt > 0) {
@@ -150,43 +185,112 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
             }
 
         } else {
-            // --- REGULAR / CASAB LOAN LOGIC ---
-            $rows[] = ['', 'Principal', '', '', '', $this->loan->amount_granted, $this->loan->amount_granted, '', ''];
+            
+            $rows[] = ['', 'PRINCIPAL', '', '', '', $this->loan->amount_granted, '', '', ''];
 
             $actualPrinBal = round($this->loan->amount_granted, 2);
+            $runningLiabilityBal = $total_liability;
+            $startRow = 19; 
 
             foreach ($this->loan->schedules as $index => $sched) {
+                $currentRow = $startRow + $index;
                 $period = $this->formatAbbreviatedPeriod($sched->period_start, $sched->period_end);
                 
                 $isWholeMonth = $this->loan->payment_preference === 'whole_month';
+                $isHalfMonth = $this->loan->payment_preference === 'half_month';
                 $isCasab = $this->loan->type === 'CASAB';
+                $isRegular = $this->loan->type === 'REGULAR SALARY LOAN';
+                $isPermanent = $isRegular && $this->loan->employee_type === 'Permanent';
                 
-                // Show balance only if Casab, Half_month, or the 2nd Row (EOM) of Whole_month
-                $showBalance = $isCasab || !$isWholeMonth || (($index + 1) % 2 == 0);
-                $balanceDisplay = $showBalance ? max(0, $sched->balance_after) : '';
-                
-                $paymentRecord = null;
-                if ($isCasab || !$isWholeMonth) {
-                    $paymentRecord = $this->loan->payments->where('period_covered', $sched->period_end)->first();
-                } else {
-                    $monthKey = Carbon::parse($sched->period_end)->format('Y-m');
-                    $paymentRecord = $this->loan->payments->where('period_covered', $monthKey)->first();
-                    if (($index + 1) % 2 != 0) {
-                        $paymentRecord = null; 
-                    }
-                }
+                $balanceDisplay = '';
+                $payBalDisplay = '';
+                $payDate = '';
+                $payAmt = '';
 
-                if ($paymentRecord) {
-                    $payAmt = $paymentRecord->amount_paid + $paymentRecord->interest;
-                    $actualPrinBal -= $paymentRecord->amount_paid;
-                    $payDate = $this->formatAbbreviatedDate($paymentRecord->payment_date);
+                $runningLiabilityBal = round($runningLiabilityBal - $sched->total_due, 2);
+
+                if ($isRegular && $isHalfMonth) {
+                    // Strict calculation per payment period row without monthly cell merges
+                    $bal = max(0, $runningLiabilityBal);
+                    $balanceDisplay = ($bal == 0) ? '-' : $bal;
                     
-                    // Payments balance = whatever balance is designated for the row
-                    $payBalDisplay = $balanceDisplay !== '' ? $balanceDisplay : max(0, $sched->balance_after);
+                    if ($payBalHeader === 'TOTAL') {
+                        $pBal = $sched->total_due;
+                        $payBalDisplay = ($pBal == 0) ? '-' : $pBal;
+                    } else {
+                        $payBalDisplay = $balanceDisplay; 
+                    }
+
+                    $paymentRecord = $this->loan->payments->where('period_covered', $sched->period_end)->first();
+                    if ($paymentRecord) {
+                        $payAmt = $paymentRecord->amount_paid + $paymentRecord->interest;
+                        $actualPrinBal -= $paymentRecord->amount_paid;
+                        $payDate = $this->formatAbbreviatedDate($paymentRecord->payment_date);
+                        $totalPaymentSum += $payAmt; 
+                    }
+
+                } elseif ($isPermanent) {
+                    // Original grouping logic for permanent whole_month
+                    if ($index % 2 != 0) {
+                        $bal = max(0, $sched->balance_after);
+                        $balanceDisplay = ($bal == 0) ? '-' : $bal;
+                    }
+                    
+                    if ($index % 2 == 0) {
+                        $nextSched = $this->loan->schedules[$index + 1] ?? null;
+                        
+                        $pBal = $sched->total_due + ($nextSched ? $nextSched->total_due : 0);
+                        $payBalDisplay = ($pBal == 0) ? '-' : $pBal;
+                        
+                        if ($nextSched) {
+                            $this->mergedCustomCells[] = "G{$currentRow}:G" . ($currentRow + 1);
+                            $this->mergedCustomCells[] = "H{$currentRow}:H" . ($currentRow + 1);
+                            $this->mergedCustomCells[] = "I{$currentRow}:I" . ($currentRow + 1);
+                        }
+
+                        $monthKey = Carbon::parse($sched->period_end)->format('Y-m');
+                        $paymentRecord = $this->loan->payments->where('period_covered', $monthKey)->first();
+
+                        if ($paymentRecord) {
+                            $payAmt = $paymentRecord->amount_paid + $paymentRecord->interest;
+                            $payDate = $this->formatAbbreviatedDate($paymentRecord->payment_date);
+                            $totalPaymentSum += $payAmt; 
+                        }
+                    }
+
                 } else {
-                    $payAmt = '';
-                    $payDate = '';
-                    $payBalDisplay = '';
+                    $showBalance = $isCasab || !$isWholeMonth || (($index + 1) % 2 == 0);
+                    if ($showBalance) {
+                         $bal = max(0, $sched->balance_after);
+                         $balanceDisplay = ($bal == 0) ? '-' : $bal;
+                    }
+                    
+                    $paymentRecord = null;
+                    if ($isCasab || !$isWholeMonth) {
+                        $paymentRecord = $this->loan->payments->where('period_covered', $sched->period_end)->first();
+                    } else {
+                        $monthKey = Carbon::parse($sched->period_end)->format('Y-m');
+                        $paymentRecord = $this->loan->payments->where('period_covered', $monthKey)->first();
+                        if (($index + 1) % 2 != 0) {
+                            $paymentRecord = null; 
+                        }
+                    }
+
+                    if ($paymentRecord) {
+                        $payAmt = $paymentRecord->amount_paid + $paymentRecord->interest;
+                        $actualPrinBal -= $paymentRecord->amount_paid;
+                        $payDate = $this->formatAbbreviatedDate($paymentRecord->payment_date);
+                        $totalPaymentSum += $payAmt; 
+                    }
+
+                    if ($paymentRecord) {
+                        if ($balanceDisplay !== '') {
+                            $payBalDisplay = $balanceDisplay;
+                        } else {
+                            $bal = max(0, $sched->balance_after);
+                            $payBalDisplay = ($bal == 0) ? '-' : $bal;
+                        }
+                    }
                 }
 
                 $rows[] = [
@@ -207,9 +311,10 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
             }
         }
 
-        $rows[] = ['TOTAL', '', $totalPrin, $totalInt, $totalSum, '', '', '', ''];
-
+        $rows[] = ['TOTAL', '', $totalPrin, $totalInt, $totalSum, '', '', '', $totalPaymentSum];
+        $rows[] = ['', '', '', '', '', '', '', '', '']; 
         $rows[] = ['', 'Prepared by:', '', '', 'Approved:', '', '', '', '']; 
+        $rows[] = ['', '', '', '', '', '', '', '', '']; 
         $rows[] = ['', '', '', '', '', '', '', '', '']; 
         
         $committee = CommitteeSignatory::first();
@@ -225,62 +330,75 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
     public function columnWidths(): array
     {
         return [
-            'A' => 3.08,
-            'B' => 19.65,
-            'C' => 10.70,
-            'D' => 9.40,
-            'E' => 10.90,
-            'F' => 10.50,
-            'G' => 10.50,
-            'H' => 10.20, 
-            'I' => 10.10,
+            'A' => 5.08,
+            'B' => 20.95,
+            'C' => 12.20,
+            'D' => 10.10,
+            'E' => 13.40,
+            'F' => 12.50,
+            'G' => 12.10,
+            'H' => 12.20, 
+            'I' => 12.10,
         ];
     }
 
     public function styles(Worksheet $sheet)
     {
-        $lastRow = count($this->array()) - 4; 
-        $sigRowStart = $lastRow + 1; 
-        $nameRow = $sigRowStart + 2; 
+        $lastRow = count($this->array()) - 6; 
+        $sigRowStart = $lastRow + 2; 
+        $nameRow = $sigRowStart + 3; 
         $titleRow = $nameRow + 1; 
 
-        // Conditionally set the font size for numbers depending on loan amount (>= 1,000,000)
         $numFontSize = $this->loan->amount_granted >= 1000000 ? 10 : 11;
 
         $sheet->getPageSetup()->setPaperSize(PageSetup::PAPERSIZE_A4); 
         $sheet->getPageSetup()->setHorizontalCentered(true);
-        $sheet->getPageMargins()->setTop(0.53);
-        $sheet->getPageMargins()->setHeader(0.27);
-        $sheet->getPageMargins()->setBottom(0.3);
-        $sheet->getPageMargins()->setLeft(0);
-        $sheet->getPageMargins()->setRight(0);
+        $sheet->getPageSetup()->setFitToPage(true);
+        $sheet->getPageSetup()->setFitToWidth(1); 
+        $sheet->getPageSetup()->setFitToHeight(0);
 
-        $sheet->getRowDimension(3)->setRowHeight(30.95);
-        $sheet->getRowDimension(4)->setRowHeight(11.10);
-        $sheet->getRowDimension(8)->setRowHeight(3.75);
+        $sheet->getPageMargins()->setTop(0.25);
+        $sheet->getPageMargins()->setBottom(0.25);
+        $sheet->getPageMargins()->setLeft(0.25);
+        $sheet->getPageMargins()->setRight(0.25);
+        $sheet->getPageMargins()->setHeader(0.3);
+        $sheet->getPageMargins()->setFooter(0.3);
 
-        $sheet->getParent()->getDefaultStyle()->getFont()->setName('Arial')->setSize(11);
+        $sheet->getRowDimension(7)->setRowHeight(30.95); 
+        $sheet->getRowDimension(8)->setRowHeight(11.10); 
+        $sheet->getRowDimension(12)->setRowHeight(3.75); 
 
-        $sheet->mergeCells('A1:I1');
-        $sheet->mergeCells('A2:I2');
-        $sheet->mergeCells('A3:I3');
+        $sheet->getParent()->getDefaultStyle()->getFont()->setName('Cambria')->setSize(11);
 
-        $sheet->mergeCells('A5:B5'); 
-        $sheet->mergeCells('C5:E5'); 
-        $sheet->mergeCells('A6:B6');
-        $sheet->mergeCells('C6:E6'); 
-        $sheet->mergeCells('A7:B7');
-        $sheet->mergeCells('C7:E7'); 
-        
-        $sheet->mergeCells('A9:B9');
+        $sheet->mergeCells('A5:I5');
+        $sheet->mergeCells('A6:I6');
+        $sheet->mergeCells('A7:I7');
+
+        $sheet->mergeCells('A9:B9'); 
+        $sheet->mergeCells('C9:E9'); 
         $sheet->mergeCells('A10:B10');
+        $sheet->mergeCells('C10:E10'); 
+        $sheet->mergeCells('A11:B11');
+        $sheet->mergeCells('C11:E11'); 
+        
+        $sheet->mergeCells('A13:B13');
+        $sheet->mergeCells('A14:B14');
 
-        $sheet->mergeCells('A11:I11');
-        $sheet->mergeCells('A12:A13'); 
-        $sheet->mergeCells('B12:B13'); 
-        $sheet->mergeCells('C12:C13'); 
-        $sheet->mergeCells('D12:D13'); 
-        $sheet->mergeCells('G12:I12'); 
+        $sheet->mergeCells('A15:I15');
+        
+        $sheet->mergeCells('A16:A17'); 
+        $sheet->mergeCells('B16:B17'); 
+        $sheet->mergeCells('C16:C17'); 
+        $sheet->mergeCells('D16:D17'); 
+        
+        $sheet->mergeCells('F16:F17');
+        
+        $sheet->mergeCells('G16:I16');
+        
+        $sheet->mergeCells('G17:G18');
+        $sheet->mergeCells('H17:H18');
+        $sheet->mergeCells('I17:I18');
+
         $sheet->mergeCells("A{$lastRow}:B{$lastRow}");
 
         $sheet->mergeCells("B{$sigRowStart}:D{$sigRowStart}"); 
@@ -292,87 +410,110 @@ class SchedExport implements FromArray, WithStyles, WithColumnWidths
         $sheet->mergeCells("B{$titleRow}:D{$titleRow}"); 
         $sheet->mergeCells("E{$titleRow}:I{$titleRow}"); 
 
+        foreach ($this->mergedCustomCells as $mergeRange) {
+            $sheet->mergeCells($mergeRange);
+        }
+
         $styles = [
-            'A1:A3' => [
-                'font' => ['bold' => true, 'name' => 'Arial', 'size' => 11],
+            'A5:I7' => [
+                'font' => ['bold' => true, 'name' => 'Cambria', 'size' => 11],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]
             ],
-            'A5:A11' => ['font' => ['name' => 'Arial', 'size' => 10]],
-            'C5:E7' => [
-                'font' => ['bold' => true, 'name' => 'Arial', 'size' => 11],
+            'A9:A15' => ['font' => ['name' => 'Cambria', 'size' => 10]],
+            'C9:E11' => [
+                'font' => ['bold' => true, 'name' => 'Cambria', 'size' => 11],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                 'borders' => [
                     'horizontal' => ['borderStyle' => Border::BORDER_THIN],
                     'bottom' => ['borderStyle' => Border::BORDER_THIN] 
                 ]
             ],
-            'C9' => [
+            'C13' => [
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
                 'numberFormat' => ['formatCode' => '#,##0.00'],
-                // Apply dynamic font size to Amount of Loan
-                'font' => ['name' => 'Arial', 'size' => $numFontSize]
+                'font' => ['name' => 'Cambria', 'size' => $numFontSize]
             ],
-            'C10' => [
+            'C14' => [
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]],
-                'font' => ['name' => 'Arial', 'size' => 11]
+                'font' => ['name' => 'Cambria', 'size' => 11]
             ],
-            'A12:I12' => [
-                'font' => ['name' => 'Arial', 'size' => 10],
+            
+            'A16:I16' => [
+                'font' => ['name' => 'Cambria', 'size' => 10, 'bold' => true],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true]
             ],
-            'A13:I13' => [
-                'font' => ['name' => 'Arial', 'size' => 8],
+            'A17:F17' => [
+                'font' => ['name' => 'Cambria', 'size' => 8, 'bold' => true],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]
             ],
-            "A14:A{$lastRow}" => [
-                'font' => ['name' => 'Arial', 'size' => 10],
+            'G17:I17' => [
+                'font' => ['name' => 'Cambria', 'size' => 8, 'bold' => true],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]
             ],
-            "B14:B{$lastRow}" => [
+            
+            'E17' => [
+                'font' => ['name' => 'Cambria', 'size' => 8, 'bold' => true]
+            ],
+            
+            "A18:F18" => [
+                'font' => ['name' => 'Cambria', 'size' => 11, 'bold' => true],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
+            ],
+            "C18:F18" => [
+                'font' => ['name' => 'Cambria', 'size' => $numFontSize, 'bold' => true],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_RIGHT]
+            ],
+
+            "A19:A{$lastRow}" => [
+                'font' => ['name' => 'Cambria', 'size' => 10],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]
+            ],
+            "B19:B{$lastRow}" => [
                 'font' => ['name' => 'Cambria', 'size' => 11],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
             ],
-            "H14:H{$lastRow}" => [ 
-                'font' => ['name' => 'Cambria', 'size' => 8],
+            "C19:G{$lastRow}" => [
+                'font' => ['name' => 'Cambria', 'size' => $numFontSize],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_RIGHT] 
+            ],
+            "H19:H{$lastRow}" => [ 
+                'font' => ['name' => 'Cambria', 'size' => 11],
                 'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_CENTER]
             ],
-            "A12:I{$lastRow}" => [
+            "I19:I{$lastRow}" => [
+                'font' => ['name' => 'Cambria', 'size' => $numFontSize],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_RIGHT] 
+            ],
+            
+            "A16:I{$lastRow}" => [
                 'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
             ],
             
-            // --- Apply dynamic font sizes & targeted alignments ---
-            "C14:G{$lastRow}" => [
-                'font' => ['name' => 'Arial', 'size' => $numFontSize]
-            ],
-            "I14:I{$lastRow}" => [
-                'font' => ['name' => 'Arial', 'size' => $numFontSize],
-                // Force column I to left align for numeric money
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_RIGHT] 
-            ],
-            
             "A{$lastRow}:B{$lastRow}" => [
-                'font' => ['bold' => true, 'italic' => true, 'name' => 'Arial', 'size' => 11],
+                'font' => ['bold' => true, 'italic' => true, 'name' => 'Cambria', 'size' => 11],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER]
             ],
             "C{$lastRow}:I{$lastRow}" => [
-                // Totals Row gets bold and the dynamic font size
-                'font' => ['bold' => true, 'name' => 'Arial', 'size' => $numFontSize],
-                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER]
+                'font' => ['bold' => true, 'name' => 'Cambria', 'size' => $numFontSize],
+                'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'horizontal' => Alignment::HORIZONTAL_RIGHT]
             ],
-            // ------------------------------------------------------
 
             "B{$sigRowStart}:I{$sigRowStart}" => [
-                'font' => ['name' => 'Arial', 'size' => 11],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT]
+                'font' => ['name' => 'Cambria', 'size' => 11, 'bold' => false],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT] 
             ],
-            "B{$nameRow}:I{$titleRow}" => [
-                'font' => ['name' => 'Arial', 'size' => 11],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER]
+            "B{$nameRow}:I{$nameRow}" => [
+                'font' => ['name' => 'Cambria', 'size' => 11, 'bold' => true], 
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT] 
+            ],
+            "B{$titleRow}:I{$titleRow}" => [
+                'font' => ['name' => 'Cambria', 'size' => 11, 'italic' => true, 'bold' => false], 
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT] 
             ]
         ];
         
-        $sheet->getStyle("C14:I{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.00_-');
+        $sheet->getStyle("C18:I{$lastRow}")->getNumberFormat()->setFormatCode('#,##0.00_-');
 
         return $styles;
     }

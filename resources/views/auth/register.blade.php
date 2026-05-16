@@ -98,7 +98,7 @@
                     @enderror
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" x-data="{ showRegisterPassword: false, showConfirmPassword: false }">
+                <div class="grid grid-cols-1 md:grid-cols-1 gap-4" x-data="{ showRegisterPassword: false, showConfirmPassword: false }">
                     
                     <!-- Password Field -->
                     <div class="input-group relative">

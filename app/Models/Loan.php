@@ -6,6 +6,7 @@ class Loan extends Model {
     protected $fillable = [
         'borrower_id', 
         'type',
+        'employee_type',
         'control_number',
         'date_of_application',
         'amount_granted', 

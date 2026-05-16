@@ -55,20 +55,18 @@ class TeamController extends Controller
         
         $fullName = Str::title(implode(' ', array_filter($nameParts)));
 
-        // 2. SAVE THE USER TO A VARIABLE SO WE CAN PASS IT TO THE EVENT
         $user = User::create([
             'name' => $fullName,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'type' => $request->type,
-            'is_active' => true, // Still true: Admin trusts them, so no manual approval needed later
-            // REMOVED: 'email_verified_at' => now(), so they are forced to verify
+            'is_active' => true, 
         ]);
 
-        // 3. TRIGGER THE VERIFICATION EMAIL
-        event(new Registered($user));
+        // REMOVED: event(new Registered($user));
 
-        return redirect()->route('team.index')->with('success', 'New team member account created! An email verification link has been sent to their address.');
+        // UPDATED MESSAGE: Removed references to email activation links
+        return redirect()->route('team.index')->with('success', 'New team member account created successfully!');
     }
 
     /**

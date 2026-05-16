@@ -109,12 +109,40 @@
         background: linear-gradient(90deg, #007aff, #34c759);
         border-radius: 3px 3px 0 0;
     }
+
+    /* Improved Detail Rows to Prevent Squishing */
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+        border-bottom: 1px dashed rgba(0,0,0,0.08);
+        padding-bottom: 0.35rem;
+    }
+    .detail-label {
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+    .detail-value {
+        color: #2d3748;
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-align: right;
+        word-break: break-word;
+        flex-grow: 1;
+    }
 </style>
 
-<div class="d-flex justify-content-between mb-4">
-    <div class="d-flex gap-2">
+<div class="d-flex justify-content-between mb-4 gap-3">
+    <div class="d-flex flex-wrap gap-2">
         <button type="button" data-bs-toggle="modal" data-bs-target="#deleteLoanModal" class="btn btn-outline-danger glass-panel rounded-pill px-4 shadow-sm d-flex align-items-center" style="font-weight: 500;">
             <i class="bi bi-trash-fill me-2"></i> Delete Loan
+        </button>
+        <button type="button" data-bs-toggle="modal" data-bs-target="#editLoanModal" class="btn btn-outline-primary glass-panel rounded-pill px-4 shadow-sm d-flex align-items-center" style="font-weight: 500;">
+            <i class="bi bi-pencil-fill me-2"></i> Edit Details
         </button>
         <a href="{{ route('finance.export_sched', $loan->id) }}" class="btn btn-outline-success glass-panel rounded-pill px-4 shadow-sm d-flex align-items-center" style="font-weight: 500;">
             <i class="bi bi-file-earmark-excel-fill me-2"></i> Export Schedule
@@ -126,90 +154,173 @@
     </a>
 </div>
 
+<!-- ========================================== -->
+<!-- UPDATED COMPREHENSIVE LOAN DETAILS PANEL   -->
+<!-- ========================================== -->
 <div class="glass-panel p-4 mb-4 shadow-sm position-relative overflow-hidden">
     <div class="position-absolute top-0 start-0 w-100" style="height: 4px; background: linear-gradient(90deg, #34c759, #007aff);"></div>
     
-    <div class="row align-items-center">
-        <div class="col-md-5 mb-3 mb-md-0">
-            <div class="text-muted small text-uppercase fw-semibold mb-1"><i class="bi bi-person-badge me-1 text-primary"></i> Borrower Profile</div>
-            <h4 class="fw-bold text-dark mb-1">{{ $loan->borrower->name }}</h4>
-            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 mb-2">{{ $loan->borrower->office->name }}</span>
-            
-            <div class="mt-2">
-                <span class="small text-muted fw-semibold">Co-Maker:</span>
-                <span class="small text-dark fw-medium ms-1">{{ $loan->borrower->co_maker ? $loan->borrower->co_maker : 'None' }}</span>
-            </div>
-        </div>
+    @php 
+        $total_principal = round($loan->amount_granted, 2);
         
-       <div class="col-md-3 mb-3 mb-md-0 text-md-center border-start border-end" style="border-color: rgba(0,0,0,0.05) !important;">
-            <div class="text-muted small text-uppercase fw-semibold mb-1"><i class="bi bi-tag me-1 text-info"></i> Loan Details</div>
-            <h5 class="fw-bold text-dark mb-1">{{ $loan->type }}</h5>
-            <p class="small text-muted mb-0">Control No: <span class="fw-semibold text-dark">{{ $loan->control_number }}</span></p>
-            <p class="small text-muted mb-0">Granted: {{ \Carbon\Carbon::parse($loan->date_of_application)->format('M d, Y') }}</p>
+        if (!is_null($loan->actual_months) && $loan->schedules->isNotEmpty()) {
+            $total_interest = round($loan->schedules->sum('interest_due'), 2);
+        } else {
+            if ($loan->type === 'CASAB') {
+                $days = \Carbon\Carbon::parse($loan->payment_start)->diffInDays(\Carbon\Carbon::parse($loan->payment_end));
+                $total_interest = round($total_principal * ($days / 30) * ($loan->base_interest / 100), 2);
+            } else {
+                $total_interest = round($total_principal * ($loan->interest_rate / 100), 2);
+            }
+        }
+
+        $total_liability = round($total_principal + $total_interest, 2);
+
+        $paid_principal = round($loan->payments->sum('amount_paid'), 2);
+        $paid_interest = round($loan->payments->sum('interest'), 2);
+        
+        $total_paid = round($paid_principal + $paid_interest, 2);
+
+        $bal = round($total_liability - $total_paid, 2);
+        
+        $rem_principal = max(0, round($total_principal - $paid_principal, 2));
+        $rem_interest = max(0, round($total_interest - $paid_interest, 2));
+    @endphp
+
+    <div class="row g-5">
+        <!-- Column 1: Borrower Information -->
+        <div class="col-lg-4 col-md-6">
+            <div class="text-muted small text-uppercase fw-bold mb-3"><i class="bi bi-person-badge me-2 text-primary"></i>Borrower Profile</div>
+            <h5 class="fw-bold text-dark mb-2">{{ $loan->borrower->name }}</h5>
             
-            <div class="mt-2 pt-2 border-top" style="border-color: rgba(0,0,0,0.05) !important;">
-                <p class="small text-muted mb-1">Applied Term: <span class="fw-semibold text-dark">{{ fmod($loan->no_of_months, 1) !== 0.00 ? number_format($loan->no_of_months, 2) : round($loan->no_of_months) }} Months</span></p>
-                <div class="d-flex align-items-center justify-content-center gap-1">
-                    <span class="small text-muted mb-0">Actual Term:</span>
-                    
+            <div class="mb-3">
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2">{{ $loan->borrower->office->name }}</span>
+                @if($loan->employee_type)
+                    <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 rounded-pill px-2 ms-1">{{ $loan->employee_type }}</span>
+                @endif
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Employee ID</span>
+                <span class="detail-value">{{ $loan->borrower->employee_id ?? 'N/A' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Co-Maker</span>
+                <span class="detail-value">{{ $loan->borrower->co_maker ? $loan->borrower->co_maker : 'None' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Application Term</span>
+                <span class="detail-value text-muted">{{ fmod($loan->no_of_months, 1) !== 0.00 ? number_format($loan->no_of_months, 2) : round($loan->no_of_months) }} Months</span>
+            </div>
+            <div class="detail-row border-0">
+                <span class="detail-label">Actual Term</span>
+                <div class="detail-value d-flex align-items-center justify-content-end gap-1">
                     @if(is_null($loan->actual_months))
-                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-3 py-0 text-dark shadow-sm" style="font-size: 0.75rem; font-weight: 600;" data-bs-toggle="modal" data-bs-target="#actualMonthsModal">
-                            <i class="bi bi-exclamation-circle me-1"></i> Set Now
+                        <button type="button" class="btn btn-sm btn-warning rounded-pill px-3 py-1 text-dark shadow-sm" style="font-size: 0.75rem; font-weight: 600;" data-bs-toggle="modal" data-bs-target="#actualMonthsModal">
+                            Set Term
                         </button>
                     @else
-                        <span class="fw-bold text-success" style="font-size: 0.9rem;">{{ fmod($loan->actual_months, 1) !== 0.00 ? number_format($loan->actual_months, 2) : round($loan->actual_months) }} Months</span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle px-1 py-0 shadow-none border-0 ms-1" data-bs-toggle="modal" data-bs-target="#actualMonthsModal" title="Update Term">
-                            <i class="bi bi-pencil-fill" style="font-size: 0.75rem;"></i>
+                        <span class="text-success">{{ fmod($loan->actual_months, 1) !== 0.00 ? number_format($loan->actual_months, 2) : round($loan->actual_months) }} Months</span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-circle px-2 py-1 shadow-none border-0 ms-1" data-bs-toggle="modal" data-bs-target="#actualMonthsModal" title="Update Term">
+                            <i class="bi bi-pencil-fill" style="font-size: 0.8rem;"></i>
                         </button>
                     @endif
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-4 text-md-end">
-            <div class="text-muted small text-uppercase fw-semibold mb-1"><i class="bi bi-wallet2 me-1 text-success"></i> Current Balance</div>
+
+        <!-- Column 2: Application Timeline -->
+        <div class="col-lg-4 col-md-6">
+            <div class="text-muted small text-uppercase fw-bold mb-3"><i class="bi bi-calendar-event me-2 text-info"></i>Application Info</div>
             
-            @php 
-                $total_principal = round($loan->amount_granted, 2);
+            <div class="mb-3">
+                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill px-3 py-1">
+                    {{ $loan->type }}
+                </span>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Control No.</span>
+                <span class="detail-value">{{ $loan->control_number }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Date Applied</span>
+                <span class="detail-value">{{ \Carbon\Carbon::parse($loan->date_of_application)->format('M d, Y') }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Payment Start</span>
+                <span class="detail-value">{{ \Carbon\Carbon::parse($loan->payment_start)->format('M d, Y') }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Payment End</span>
+                <span class="detail-value">{{ \Carbon\Carbon::parse($loan->payment_end)->format('M d, Y') }}</span>
+            </div>
+            <div class="detail-row border-0">
+                <span class="detail-label">Pref. Method</span>
+                <span class="detail-value">
+                    @if($loan->type === 'SPECIAL LOAN') Flexible 
+                    @else {{ $loan->payment_preference === 'whole_month' ? 'Monthly' : '15th & EOM' }} 
+                    @endif
+                </span>
+            </div>
+        </div>
+
+        <!-- Column 3: Status & Balances -->
+        <div class="col-lg-4 col-md-12">
+            <div class="text-muted small text-uppercase fw-bold mb-3"><i class="bi bi-wallet2 me-2 text-warning"></i>Status & Balance</div>
+
+            <div class="p-4 rounded-4 bg-white shadow-sm border" style="border-color: rgba(0,0,0,0.05) !important;">
+                <div class="small text-muted fw-bold text-uppercase mb-1">Current Balance</div>
+                <h2 class="fw-bold mb-3 {{ $bal > 0 ? 'text-danger' : 'text-success' }}" style="letter-spacing: -0.5px;">
+                    ₱ {{ number_format($bal, 2) }}
+                </h2>
                 
-                if (!is_null($loan->actual_months) && $loan->schedules->isNotEmpty()) {
-                    $total_interest = round($loan->schedules->sum('interest_due'), 2);
-                } else {
-                    if ($loan->type === 'CASAB') {
-                        $days = \Carbon\Carbon::parse($loan->payment_start)->diffInDays(\Carbon\Carbon::parse($loan->payment_end));
-                        $total_interest = round($total_principal * ($days / 30) * ($loan->base_interest / 100), 2);
-                    } else {
-                        $total_interest = round($total_principal * ($loan->interest_rate / 100), 2);
-                    }
-                }
-
-                $total_liability = round($total_principal + $total_interest, 2);
-
-                $paid_principal = round($loan->payments->sum('amount_paid'), 2);
-                $paid_interest = round($loan->payments->sum('interest'), 2);
-                
-                $total_paid = round($paid_principal + $paid_interest, 2);
-
-                $bal = round($total_liability - $total_paid, 2);
-                
-                $rem_principal = max(0, round($total_principal - $paid_principal, 2));
-                $rem_interest = max(0, round($total_interest - $paid_interest, 2));
-            @endphp
-
-            <h2 class="fw-bold mb-0 {{ $bal > 0 ? 'text-danger' : 'text-success' }}" style="letter-spacing: -0.5px;">
-                ₱ {{ number_format($bal, 2) }}
-            </h2>
-            @if($bal <= 0)
-                <span class="badge bg-success rounded-pill px-3 mt-2 shadow-sm"><i class="bi bi-check-circle me-1"></i> Fully Paid</span>
-            @else
-                <div class="d-flex justify-content-end gap-2 mt-2">
-                    <span class="badge bg-light text-dark border shadow-sm px-2 py-1"><span class="text-muted fw-normal me-1">Principal:</span> ₱{{ number_format($rem_principal, 2) }}</span>
-                    <span class="badge bg-light text-dark border shadow-sm px-2 py-1"><span class="text-muted fw-normal me-1">Interest:</span> ₱{{ number_format($rem_interest, 2) }}</span>
-                </div>
-            @endif
+                @if($bal <= 0)
+                    <span class="badge bg-success rounded-pill px-4 py-2 shadow-sm fs-6"><i class="bi bi-check-circle me-2"></i> Fully Paid</span>
+                @else
+                    <div class="d-flex justify-content-between small mt-2 border-top pt-3">
+                        <span class="text-muted fw-medium">Remaining Principal:<br> <span class="text-dark fw-bold fs-6">₱{{ number_format($rem_principal, 2) }}</span></span>
+                        <span class="text-muted fw-medium text-end">Remaining Interest:<br> <span class="text-dark fw-bold fs-6">₱{{ number_format($rem_interest, 2) }}</span></span>
+                    </div>
+                @endif
+            </div>
         </div>
     </div>
+
+    <!-- Financial Breakdown Horizontal Panel -->
+    <div class="mt-4 pt-4 border-top" style="border-color: rgba(0,0,0,0.08) !important;">
+        <div class="text-muted small text-uppercase fw-bold mb-3"><i class="bi bi-cash-coin me-2 text-success"></i>Financial Breakdown</div>
+        <div class="row g-3">
+            <div class="col-6 col-md-4 col-lg-2">
+                <div class="small text-secondary fw-semibold mb-1">Amount Granted</div>
+                <div class="fw-bold text-primary fs-5">₱ {{ number_format($loan->amount_granted, 2) }}</div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2 border-start">
+                <div class="small text-secondary fw-semibold mb-1">Net Proceeds</div>
+                <div class="fw-bold text-success fs-5">₱ {{ number_format($loan->net_proceeds, 2) }}</div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2 border-start">
+                <div class="small text-secondary fw-semibold mb-1">Service Fee</div>
+                <div class="fw-bold text-dark fs-6 mt-1">₱ {{ number_format($loan->service_fee, 2) }}</div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2 border-start">
+                <div class="small text-secondary fw-semibold mb-1">Surcharge</div>
+                <div class="fw-bold text-dark fs-6 mt-1">₱ {{ number_format($loan->surcharge, 2) }}</div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2 border-start">
+                <div class="small text-secondary fw-semibold mb-1">Base Interest</div>
+                <div class="fw-bold text-dark fs-6 mt-1">{{ $loan->base_interest }} %</div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2 border-start">
+                <div class="small text-secondary fw-semibold mb-1">Total Eff. Rate</div>
+                <div class="fw-bold text-dark fs-6 mt-1">{{ $loan->interest_rate }} %</div>
+            </div>
+        </div>
+    </div>
+
 </div>
+<!-- ========================================== -->
+
 
 <ul class="nav nav-tabs apple-tabs mb-4" id="loanTabs" role="tablist">
     <li class="nav-item">
@@ -256,7 +367,6 @@
                                 <td></td>
                                 <td class="text-start ps-4 fw-bold text-secondary">Principal</td>
                                 <td></td><td></td><td></td>
-                                {{-- Changed from $total_liability to $total_principal --}}
                                 <td class="fw-bold text-dark">₱ {{ number_format($total_principal, 2) }}</td>
                                 <td class="border-start"></td><td></td>
                             </tr>
@@ -293,7 +403,6 @@
                                     <td class="text-muted">₱ {{ number_format($pay->amount_paid, 2) }}</td>
                                     <td class="text-muted">₱ {{ number_format($pay->interest, 2) }}</td>
                                     <td class="fw-medium text-primary">₱ {{ number_format($payTotal, 2) }}</td>
-                                    {{-- Changed from $spRunBal to $spRemPrin --}}
                                     <td class="fw-bold text-dark">₱ {{ number_format($spRemPrin, 2) }}</td>
                                     <td class="border-start text-success fw-medium">{{ $formattedPeriod }}</td>
                                     <td class="text-success fw-bold">₱ {{ number_format($payTotal, 2) }}</td>
@@ -548,7 +657,76 @@
 <!-- ========================================================================= -->
 @push('modals')
 <div id="all-modals-container">
-
+    <!-- EDIT LOAN MODAL -->
+    <div class="modal fade" id="editLoanModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content glass-modal-content border-0">
+                <form action="{{ route('finance.update', $loan->id) }}" method="POST" class="needs-validation" novalidate>
+                    @csrf
+                    @method('PUT')
+                    
+                    <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                        <h4 class="modal-title fw-bold" style="background: linear-gradient(90deg, #007aff, #34c759); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                            Edit Applicant Details
+                        </h4>
+                        <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
+                    </div>
+                    
+                    <div class="modal-body px-4 py-4">
+                        <div class="form-inner-panel p-4">
+                            <h6 class="fw-bold mb-4 text-dark border-bottom pb-2" style="border-color: rgba(0,0,0,0.05) !important;">
+                                <i class="bi bi-person-badge me-2 text-primary"></i>Profile Information
+                            </h6>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="small text-secondary mb-1 fw-semibold">Application Date <span class="text-danger">*</span></label>
+                                    <input type="date" name="date_of_application" class="form-control glass-input px-3 py-2" value="{{ \Carbon\Carbon::parse($loan->date_of_application)->format('Y-m-d') }}" required>
+                                    <div class="invalid-feedback">Application date is required.</div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="small text-secondary mb-1 fw-semibold">Office <span class="text-danger">*</span></label>
+                                    <select name="office_name" class="form-select glass-input px-3 py-2" required>
+                                        @foreach($availableOffices as $off)
+                                            <option value="{{ $off }}" {{ $loan->borrower->office->name === $off ? 'selected' : '' }}>{{ $off }}</option>
+                                        @endforeach
+                                    </select>
+                                    <div class="invalid-feedback">Office is required.</div>
+                                </div>
+                                
+                                <div class="col-md-12 mt-4">
+                                    <label class="small text-secondary mb-1 fw-semibold">Name of Applicant <span class="text-danger">*</span></label>
+                                    <input type="text" name="borrower_name" class="form-control glass-input px-3 py-2" value="{{ $loan->borrower->name }}" required>
+                                    <div class="invalid-feedback">Applicant name is required.</div>
+                                </div>
+                                
+                                <div class="col-md-6 mt-2">
+                                    <label class="small text-secondary mb-1 fw-semibold">Employee ID <span class="text-danger">*</span></label>
+                                    <input type="text" name="employee_id" class="form-control glass-input px-3 py-2 @error('employee_id') is-invalid @enderror" value="{{ old('employee_id', $loan->borrower->employee_id) }}" required>
+                                    @error('employee_id')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @else
+                                        <div class="invalid-feedback">Employee ID is required.</div>
+                                    @enderror
+                                </div>
+                                
+                                <div class="col-md-6 mt-2">
+                                    <label class="small text-secondary mb-1 fw-semibold">Name of Co-Maker</label>
+                                    <input type="text" name="co_maker" class="form-control glass-input px-3 py-2" value="{{ $loan->borrower->co_maker }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="modal-footer border-top-0 pt-2 px-4 pb-4 mt-2 d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-light rounded-pill px-4 shadow-sm" data-bs-dismiss="modal" style="background: rgba(255,255,255,0.7);">Cancel</button>
+                        <button type="submit" class="btn btn-dark rounded-pill px-5 shadow-sm fw-bold">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>                            
     <!-- ACTUAL MONTHS MODAL -->
     <div class="modal fade" id="actualMonthsModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-dialog-centered">
@@ -597,7 +775,6 @@
                             
                             <div class="row justify-content-center text-center">
                                 <div class="col-sm-6 mb-3 mb-sm-0">
-                                    <p class="mb-2 text-muted fw-semibold">Casual</p>
                                     <div class="form-check d-inline-block text-start">
                                         <input class="form-check-input shadow-none" type="radio" name="payment_preference" id="pref_half" value="half_month" {{ ($loan->payment_preference ?? 'half_month') === 'half_month' ? 'checked' : '' }}>
                                         <label class="form-check-label fw-medium text-dark" for="pref_half">Every 15th & EOM</label>
@@ -605,7 +782,6 @@
                                 </div>
 
                                 <div class="col-sm-6">
-                                    <p class="mb-2 text-muted fw-semibold">Permanent</p>
                                     <div class="form-check d-inline-block text-start">
                                         <input class="form-check-input shadow-none" type="radio" name="payment_preference" id="pref_whole" value="whole_month" {{ ($loan->payment_preference ?? '') === 'whole_month' ? 'checked' : '' }}>
                                         <label class="form-check-label fw-medium text-dark" for="pref_whole">Monthly</label>
@@ -856,6 +1032,11 @@
             document.body.appendChild(modalsContainer);
         }
 
+        @if($errors->has('employee_id'))
+            var editModal = new bootstrap.Modal(document.getElementById('editLoanModal'));
+            editModal.show();
+        @endif
+
         @if($errors->has('custom_amount_paid'))
             var paymentModal = new bootstrap.Modal(document.getElementById('addPaymentModal'));
             paymentModal.show();
@@ -866,6 +1047,7 @@
             myModal.show();
         @endif
 
+        
         let actualMonthsForm = document.getElementById('actualMonthsForm');
         if (actualMonthsForm) {
             actualMonthsForm.addEventListener('submit', function(event) {

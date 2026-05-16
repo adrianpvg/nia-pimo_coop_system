@@ -16,6 +16,7 @@ return new class extends Migration {
             $table->id();
             $table->string('name');
             $table->foreignId('office_id')->constrained();
+            $table->string('employee_id')->nullable();
             $table->string('co_maker')->nullable();
             $table->timestamps();
         });
@@ -24,6 +25,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('borrower_id')->constrained();
             $table->string('type');
+            $table->enum('employee_type', ['Casual', 'COS', 'Permanent', 'Co-Terminous'])->nullable();
             
             $table->string('control_number')->unique(); 
             $table->date('date_of_application'); 
@@ -40,6 +42,9 @@ return new class extends Migration {
             
             $table->integer('no_of_months'); 
             $table->integer('actual_months')->nullable(); 
+            
+            // REPLACE the string with the enum definition here:
+            $table->enum('payment_preference', ['half_month', 'whole_month'])->default('half_month');
             
             $table->timestamps();
         });
@@ -64,7 +69,6 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('loan_id')->constrained()->cascadeOnDelete();
             
-            // NEW: Two separate columns for audit trailing
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete(); 
             

@@ -179,21 +179,25 @@
         margin-bottom: 0.5rem;
     }
     .metric-value {
-        font-size: 1.8rem;
+        font-size: 1.15rem; /* Adjusted for smaller text */
         font-weight: 700;
         color: var(--text-primary);
+    }
+
+    /* Table Adjustments */
+    #loansTable th, #loansTable td {
+        font-size: 0.75rem; /* Reduced table text size */
     }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
     <div>
         <h2 class="fw-bold text-dark mb-1">
-            {{ $type === 'ALL' || !$type ? 'COOP Overview' : $type}}
+            {{ $type === 'ALL' || !$type ? 'COOP Overview' : ($type === 'REGULAR SALARY LOAN' ? 'REGULAR LOAN' : $type) }}
         </h2>
     </div>
     
     <div class="d-flex gap-2 flex-wrap"> 
-        
         <form method="GET" action="{{ route('finance.index', ['type' => $type ?? 'ALL']) }}" id="filterForm" class="m-0 d-flex align-items-center glass-panel px-2 py-1 shadow-sm" style="border-radius: 12px; border: 1px solid rgba(0, 122, 255, 0.3);">
             <i class="bi bi-funnel-fill text-primary ms-2 me-1"></i>
             
@@ -220,6 +224,12 @@
         <a href="{{ route('finance.export', ['type' => $type ?? 'ALL', 'year' => $year, 'office' => $officeFilter]) }}" class="btn btn-outline-secondary glass-panel px-4" style="border-radius: 12px;">
             <i class="bi bi-cloud-arrow-down me-2"></i> Export
         </a>
+
+        @if($type === 'REGULAR SALARY LOAN')
+            <button class="btn btn-outline-success shadow-sm px-4 ms-1" style="border-radius: 12px;" data-bs-toggle="modal" data-bs-target="#regularSchedExportModal">
+                <i class="bi bi-file-earmark-spreadsheet me-2"></i> Export Schedules
+            </button>
+        @endif
     </div>
 </div>
 
@@ -252,17 +262,14 @@
                             <th>Control No.</th> 
                             <th>App. Date</th>
                             <th>Office</th>
+                            @if($type === 'REGULAR SALARY LOAN')
+                                <th>Emp ID</th>
+                            @endif
                             <th>Name</th>
-                            <th>Co-Maker</th>
                             <th>Type</th> 
                             <th>Principal</th>
-                            <th>Service Fee</th>
                             <th>Interest</th>
-                            <th>Surcharge</th>
                             <th>Net Amount</th>
-                            <th>Months</th>
-                            <th>Start</th>
-                            <th>End</th>
                             <th>Action</th>
                         </tr>
                     </thead>
@@ -272,23 +279,19 @@
                             <td class="fw-semibold text-primary">{{ $loan->control_number }}</td>
                             <td class="text-muted">{{ $loan->date_of_application }}</td>
                             <td class="text-muted">{{ $loan->borrower->office->name ?? 'N/A' }}</td>
+                            @if($type === 'REGULAR SALARY LOAN')
+                                <td class="text-muted">{{ $loan->borrower->employee_id }}</td>
+                            @endif
                             <td class="fw-bold">{{ $loan->borrower->name }}</td>
-                            <td class="small text-muted">{{ $loan->borrower->co_maker ?? '-' }}</td>
                             <td>
                                 <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 rounded-pill">
                                     {{ $loan->type ?? 'Loan' }}
                                 </span>
                             </td>
                             <td class="fw-medium">₱{{ number_format($loan->amount_granted, 2) }}</td>
-                            <td class="text-muted">₱{{ number_format($loan->service_fee, 2) }}</td>
                             <td class="text-muted">₱{{ number_format($loan->interest_rate*.01*$loan->amount_granted, 2) }}</td>
-                            <td class="text-muted">₱{{ number_format($loan->surcharge, 2) }}</td>
                             <td class="fw-bold text-success">₱{{ number_format($loan->net_proceeds, 2) }}</td>
-                            <td class="text-muted">
-                                {{ fmod($loan->no_of_months, 1) !== 0.00 ? number_format($loan->no_of_months, 2) : round($loan->no_of_months) }}
-                            </td>
-                            <td class="text-muted">{{ $loan->payment_start }}</td>
-                            <td class="text-muted">{{ $loan->payment_end }}</td>
+
                             <td>
                                 <div class="d-flex align-items-center justify-content-center gap-2">
                                     <a href="{{ route('finance.show', $loan->id) }}" class="btn btn-sm btn-light border rounded-pill px-3 shadow-sm" style="background: rgba(255,255,255,0.8);">
@@ -341,31 +344,71 @@
     <div class="tab-pane fade" id="summary-pane">
         
         <div class="row g-4 mb-4">
+            
+            @if($type !== 'ALL' && $type)
             <div class="col-md-6 col-xl-3">
-                <div class="metric-card">
-                    <span class="metric-title"><i class="bi bi-file-earmark-text text-primary me-2"></i> Total Records</span>
-                    <span class="metric-value">{{ number_format($summary['total_loans']) }}</span>
+                <div class="metric-card h-100">
+                    <span class="metric-title"><i class="bi bi-file-earmark-text text-primary me-2"></i> Records</span>
+                    <span class="metric-value mt-auto">{{ number_format($summary['total_loans']) }}</span>
+                </div>
+            </div>
+            @endif
+
+            <div class="col-md-6 col-xl-3">
+                <div class="metric-card h-100">
+                    <span class="metric-title"><i class="bi bi-cash text-success me-2"></i> Principal</span>
+                    <span class="metric-value text-success mt-auto">₱ {{ number_format($summary['total_principal'], 2) }}</span>
                 </div>
             </div>
             <div class="col-md-6 col-xl-3">
-                <div class="metric-card">
-                    <span class="metric-title"><i class="bi bi-cash text-success me-2"></i> Total Principal</span>
-                    <span class="metric-value text-success">₱{{ number_format($summary['total_principal'], 2) }}</span>
+                <div class="metric-card h-100">
+                    <span class="metric-title"><i class="bi bi-wallet2 text-info me-2"></i> Total Paid ({{ $summary['total_paid_count'] }})</span>
+                    <span class="metric-value text-info mt-auto">₱ {{ number_format($summary['total_paid'], 2) }}</span>
                 </div>
             </div>
             <div class="col-md-6 col-xl-3">
-                <div class="metric-card">
-                    <span class="metric-title"><i class="bi bi-bank text-info me-2"></i> Net Amount</span>
-                    <span class="metric-value">₱{{ number_format($summary['total_net'], 2) }}</span>
+                <div class="metric-card h-100">
+                    <span class="metric-title"><i class="bi bi-exclamation-circle text-danger me-2"></i> Unpaid ({{ $summary['total_unpaid_count'] }})</span>
+                    <span class="metric-value text-danger mt-auto">₱ {{ number_format($summary['total_balance'], 2) }}</span>
                 </div>
             </div>
-            <div class="col-md-6 col-xl-3">
-                <div class="metric-card">
-                    <span class="metric-title"><i class="bi bi-exclamation-circle text-danger me-2"></i> Total Outstanding</span>
-                    <span class="metric-value text-danger">₱{{ number_format($summary['total_balance'], 2) }}</span>
+            
+            @if($type === 'ALL' || !$type)
+            <div class="col-md-12 col-xl-3">
+                <div class="metric-card h-100 d-flex flex-column py-2">
+                    <div class="mt-2 d-flex flex-column flex-grow-1">
+                        @php 
+                            $overallPaid = 0;
+                            $overallTotal = 0;
+                        @endphp
+                        
+                        <!-- Removed scrollable wrapper to let content flow naturally -->
+                        <div class="pe-1">
+                            @forelse($summary['loans_per_type'] as $lType => $counts)
+                                @php 
+                                    $overallPaid += $counts['paid'];
+                                    $overallTotal += $counts['total'];
+                                @endphp
+                                <div class="d-flex justify-content-between small border-bottom mb-1 pb-1">
+                                    <span class="text-secondary">{{ $lType === 'REGULAR SALARY LOAN' ? 'Regular Loan' : $lType }}</span>
+                                    <span class="fw-bold">{{ $counts['paid'] }}/{{ $counts['total'] }}</span>
+                                </div>
+                            @empty
+                                <span class="text-muted small">No data</span>
+                            @endforelse
+                        </div>
+
+                        <!-- Pushed the total to the bottom using mt-auto -->
+                        @if(!empty($summary['loans_per_type']))
+                            <div class="d-flex justify-content-between small pt-1 mt-auto" style="border-top-width: 2px !important;">
+                                <span class="text-dark fw-bold">TOTAL</span>
+                                <span class="fw-bold text-primary">{{ $overallPaid }}/{{ $overallTotal }}</span>
+                            </div>
+                        @endif
+                    </div>
                 </div>
             </div>
-        </div>
+            @endif
 
         <div class="row g-4">
             <div class="col-lg-4">
@@ -484,20 +527,18 @@
                                 </h6>
                                 
                                 <div class="row g-3">
-                                    <div class="col-12">
-                                        <label class="small text-secondary mb-1 fw-semibold">Date of Application <span class="text-danger">*</span></label>
+                                    <div class="col-6">
+                                        <label class="small text-secondary mb-1 fw-semibold">Application Date <span class="text-danger">*</span></label>
                                         <input type="date" name="date_of_application" id="date_applied" class="form-control glass-input px-3 py-2" value="{{ date('Y-m-d') }}" min="2026-01-01" onchange="syncDate()" required>
                                         <div class="invalid-feedback">Date must be from 2026 onwards.</div>
                                     </div>
-                                    <div class="col-12">
+                                    <div class="col-6">
                                         <label class="small text-secondary mb-1 fw-semibold">Office <span class="text-danger">*</span></label>
                                         <select name="office_name" class="form-select glass-input px-3 py-2" required>
-                                            <option value="" disabled selected>Choose an office...</option>
-                                            
+                                            <option value="" disabled selected>Choose Office</option>
                                             @foreach($availableOffices as $off)
                                                 <option value="{{ $off }}">{{ $off }}</option>
                                             @endforeach
-                                            
                                             @if(empty($availableOffices))
                                                 <option value="ASRIS">PIMO</option>
                                                 <option value="ADRIS">PIMO</option>
@@ -507,12 +548,34 @@
                                             @endif
                                         </select>
                                     </div>
-                                    <div class="col-12 mt-4">
+                                    <div class="col-md-12 mt-4">
                                         <label class="small text-secondary mb-1 fw-semibold">Name of Applicant <span class="text-danger">*</span></label>
                                         <input type="text" name="borrower_name" class="form-control glass-input px-3 py-2" placeholder="Enter Full Name" required>
                                         <div class="invalid-feedback">Applicant name is required.</div>
                                     </div>
-                                    <div class="col-12">
+                                    <div class="col-12 mt-2" id="employee_id_col">
+                                        <label class="small text-secondary mb-1 fw-semibold">Employee ID <span class="text-danger">*</span></label>
+                                        <input type="text" name="employee_id" class="form-control glass-input px-3 py-2 @error('employee_id') is-invalid @enderror" placeholder="Enter ID" value="{{ old('employee_id') }}" required>
+                                        @error('employee_id')
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        @else
+                                            <div class="invalid-feedback">Employee ID is required.</div>
+                                        @enderror
+                                    </div>
+                                    
+                                    <div class="col-6 mt-2" id="employee_type_col">
+                                        <label class="small text-secondary mb-1 fw-semibold">Employee Type <span class="text-danger">*</span></label>
+                                        <select name="employee_type" id="employee_type" class="form-select glass-input px-3 py-2">
+                                            <option value="" disabled selected>Select</option>
+                                            <option value="Casual">Casual</option>
+                                            <option value="COS">COS</option>
+                                            <option value="Permanent">Permanent</option>
+                                            <option value="Co-Terminous">Co-Terminous</option>
+                                        </select>
+                                        <div class="invalid-feedback">Employee Type is required for Regular Salary Loans.</div>
+                                    </div>
+                                    
+                                    <div class="col-12 mt-2">
                                         <label class="small text-secondary mb-1 fw-semibold">Name of Co-Maker</label>
                                         <input type="text" name="co_maker" class="form-control glass-input px-3 py-2" placeholder="Optional">
                                     </div>
@@ -646,6 +709,59 @@
     </div>
 </div>
 
+<!-- Regular Sched Export Modal -->
+<div class="modal fade" id="regularSchedExportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-modal-content border-0">
+            <form action="{{ route('finance.export.regular.sched') }}" method="GET">
+                <input type="hidden" name="year" value="{{ $year }}">
+                <input type="hidden" name="office" value="{{ $officeFilter }}">
+                
+                <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                    <h5 class="modal-title fw-bold text-dark">Export Schedule Payments</h5>
+                    <button type="button" class="btn-close shadow-none" data-bs-dismiss="modal"></button>
+                </div>
+                
+                <div class="modal-body px-4 py-4">
+                    <div class="mb-3">
+                        <label class="small text-secondary mb-1 fw-semibold">Employee Type</label>
+                        <select name="employee_type" id="export_employee_type" class="form-select glass-input px-3 py-2">
+                            <option value="Permanent">Permanent</option>
+                            <option value="Casual">Casual</option>
+                            <option value="COS">COS</option>
+                            <option value="Co-Terminous">Co-Terminous</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="small text-secondary mb-1 fw-semibold">Schedule Month (Year & Month)</label>
+                        <input type="month" name="schedule_month" class="form-control glass-input px-3 py-2" required>
+                    </div>
+                    
+                    <div class="mb-3" id="schedule_period_wrapper" style="display: none;">
+                        <label class="small text-secondary mb-1 fw-semibold">Payment Period</label>
+                        <select name="schedule_period" class="form-select glass-input px-3 py-2">
+                            <option value="15">15th of the Month</option>
+                            <option value="end">End of the Month</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="small text-secondary mb-1 fw-semibold">Specific Employee IDs (Optional)</label>
+                        <textarea name="employee_ids" class="form-control glass-input px-3 py-2" rows="5" placeholder="Ex: 843781, 124134"></textarea>
+                        <small class="text-muted" style="font-size: 11px;">Comma-separated ID numbers. You can paste multiple IDs across multiple lines.</small>
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-top-0 pt-2 px-4 pb-4">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4">Generate Excel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{{ asset('js/loan-printer.js') }}"></script>
@@ -654,6 +770,12 @@
     $(document).ready(function() { 
         $('#createLoanModal').appendTo('body');
         $('.loan-delete-modal').appendTo('body');
+        $('#regularSchedExportModal').appendTo('body');
+        
+        @if($errors->has('employee_id'))
+            var createModal = new bootstrap.Modal(document.getElementById('createLoanModal'));
+            createModal.show();
+        @endif
 
         if ($('#loansTable').length) {
             $('#loansTable').DataTable({
@@ -686,6 +808,19 @@
 
             updateLoanTypeConstraints();
         });
+
+        
+
+        let exportEmpType = document.getElementById('export_employee_type');
+        if (exportEmpType) {
+            exportEmpType.addEventListener('change', function() {
+                if(this.value === 'Permanent') {
+                    document.getElementById('schedule_period_wrapper').style.display = 'none';
+                } else {
+                    document.getElementById('schedule_period_wrapper').style.display = 'block';
+                }
+            });
+        }
         
         syncDate(); 
 
@@ -803,6 +938,35 @@
 
                 if(casabDateCol) casabDateCol.style.display = 'none';
                 syncDate();
+            }            
+
+            let employeeTypeCol = document.getElementById('employee_type_col');
+            let employeeTypeSelect = document.getElementById('employee_type');
+            let employeeIdCol = document.getElementById('employee_id_col'); // Target the new ID
+
+            if (type === 'REGULAR SALARY LOAN') {
+                // Show Employee Type and make it required
+                if (employeeTypeCol) employeeTypeCol.style.display = 'block';
+                if (employeeTypeSelect) employeeTypeSelect.setAttribute('required', 'required');
+                
+                // Shrink Employee ID to col-6 so they sit side-by-side
+                if (employeeIdCol) {
+                    employeeIdCol.classList.remove('col-12');
+                    employeeIdCol.classList.add('col-md-6');
+                }
+            } else {
+                // Hide Employee Type and remove requirement
+                if (employeeTypeCol) employeeTypeCol.style.display = 'none';
+                if (employeeTypeSelect) {
+                    employeeTypeSelect.removeAttribute('required');
+                    employeeTypeSelect.value = "";
+                }
+                
+                // Expand Employee ID to full width
+                if (employeeIdCol) {
+                    employeeIdCol.classList.remove('col-md-6');
+                    employeeIdCol.classList.add('col-12');
+                }
             }
             calculateAll();
         }

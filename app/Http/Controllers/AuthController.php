@@ -52,10 +52,10 @@ class AuthController extends Controller
             'is_active' => false, 
         ]);
 
-        // TRIGGER THE VERIFICATION EMAIL
-        event(new Registered($user));
+        // REMOVED: event(new Registered($user));
 
-        return redirect()->route('login')->with('success', 'Account created! Please check your email to verify your address. Note: An administrator must approve your account before you can log in.');
+        // UPDATED MESSAGE: Removed references to checking email inbox
+        return redirect()->route('login')->with('success', 'Account created! Note: An administrator must approve your account before you can log in.');
     }
 
     public function login(Request $request)
@@ -75,16 +75,10 @@ class AuthController extends Controller
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
 
-            // CHECK 1: Is Email Verified?
-            if (!$user->hasVerifiedEmail()) {
-                Auth::logout();
-                return back()->withErrors(['email' => 'You must verify your email address before logging in. Please check your inbox.'])->onlyInput('email');
-            }
-
-            // CHECK 2: Is Admin Approved? (Admins bypass this check)
+            // CHECK 2: Is Admin Approved? (Modified warning message slightly to sound native)
             if (!$user->is_active && $user->type !== 'admin') {
                 Auth::logout();
-                return back()->withErrors(['email' => 'Your account is verified but is currently pending Administrator approval.'])->onlyInput('email');
+                return back()->withErrors(['email' => 'Your account is currently pending Administrator approval.'])->onlyInput('email');
             }
 
             $request->session()->regenerate();
