@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Auth\Events\Registered; // <-- ADD THIS
+use Illuminate\Auth\Events\Registered; 
 use App\Models\User;
 
 class AuthController extends Controller
@@ -52,9 +52,6 @@ class AuthController extends Controller
             'is_active' => false, 
         ]);
 
-        // REMOVED: event(new Registered($user));
-
-        // UPDATED MESSAGE: Removed references to checking email inbox
         return redirect()->route('login')->with('success', 'Account created! Note: An administrator must approve your account before you can log in.');
     }
 
@@ -74,8 +71,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
-
-            // CHECK 2: Is Admin Approved? (Modified warning message slightly to sound native)
+            
             if (!$user->is_active && $user->type !== 'admin') {
                 Auth::logout();
                 return back()->withErrors(['email' => 'Your account is currently pending Administrator approval.'])->onlyInput('email');

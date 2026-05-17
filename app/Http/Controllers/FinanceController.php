@@ -36,7 +36,6 @@ class FinanceController extends Controller
 
         $loans->map(function($loan) {
             $loan->total_paid = $loan->payments->sum('amount_paid');
-            // Added round() to fix the floating-point precision issue causing 0 balance to be marked unpaid
             $loan->balance = round($loan->amount_granted - $loan->total_paid, 2);
             $loan->is_paid = $loan->balance <= 0.00;
             return $loan;
@@ -115,7 +114,6 @@ class FinanceController extends Controller
         if ($request->type === 'REGULAR SALARY LOAN') {
             $rules['employee_type'] = 'required|string|in:Casual,COS,Permanent,Co-Terminous';
             
-            // Constraint (1): Check if a borrower with this employee_id already has a Regular Salary Loan application
             $employeeIdUpper = strtoupper($request->employee_id);
             $hasExistingRegularLoan = Loan::where('type', 'REGULAR SALARY LOAN')
                 ->whereHas('borrower', function($q) use ($employeeIdUpper) {
@@ -180,7 +178,6 @@ class FinanceController extends Controller
 
         $office = Office::firstOrCreate(['name' => strtoupper($request->office_name)]);
         
-        // Match or create the borrower
         $borrower = Borrower::firstOrCreate(
             ['name' => strtoupper($request->borrower_name)], 
             [
@@ -415,7 +412,6 @@ class FinanceController extends Controller
 
         $request->validate($rules);
 
-        // Calculate dynamic actual months for robust backend integrity
         if ($loan->type === 'CASAB') {
             $days = Carbon::parse($loan->payment_start)->diffInDays(Carbon::parse($loan->payment_end));
             $actual_months = round($days / 30, 2);
@@ -428,7 +424,6 @@ class FinanceController extends Controller
         $monthlyRate = $base_rate / 100;
         $totalExpectedInterest = 0;
 
-        // DYNAMIC INTEREST CALCULATION (Matching Frontend JS)
         if ($loan->type === 'CASAB') {
             $days = Carbon::parse($loan->payment_start)->diffInDays(Carbon::parse($loan->payment_end));
             $totalExpectedInterest = $principal * ($days / 30) * $monthlyRate;
@@ -437,7 +432,6 @@ class FinanceController extends Controller
             $totalExpectedInterest = $principal * $monthlyRate * $actual_months;
 
         } else {
-            // REGULAR SALARY LOAN
             $totalPeriods = $actual_months * 2; 
             $halfMonthRate = $monthlyRate / 2;
 
@@ -460,7 +454,6 @@ class FinanceController extends Controller
             }
         }
 
-        // Calculate new Total Effective Interest Rate
         if ($principal > 0) {
             $new_interest_rate = ($totalExpectedInterest / $principal) * 100;
         } else {
@@ -479,7 +472,6 @@ class FinanceController extends Controller
 
         $amortizationService->generateSchedule($loan);
 
-        // Build the dynamic success message
         $message = 'Amortization term and interest rate successfully updated.';
         if ($hasExistingPayments) {
             $message .= ' All previous payment records have been reset to match the new schedule.';
@@ -522,17 +514,13 @@ class FinanceController extends Controller
         $schedulePeriod = $request->input('schedule_period');
         $employeeIdsString = $request->input('employee_ids');
 
-        // 1. Process and Clean Comma-Separated IDs if provided
         $validEmployeeIds = null; 
 
         if (!empty($employeeIdsString)) {
-            // Convert string "ID-1, ID-2, ID-3" into an array ['ID-1', 'ID-2', 'ID-3']
             $inputIds = array_map('trim', explode(',', $employeeIdsString));
-            $inputIds = array_filter($inputIds); // Remove empty values
+            $inputIds = array_filter($inputIds); 
 
-            // 2. Query loans matching these IDs to verify their compliance
-            // Assuming 'payment_preference' is determined by the $schedulePeriod context (e.g., 'half_month' or 'whole_month')
-            $expectedPreference = ($employeeType === 'Permanent') ? 'half_month' : 'whole_month'; // Adjust this mapping based on your business logic
+            $expectedPreference = ($employeeType === 'Permanent') ? 'half_month' : 'whole_month'; 
 
             $matchingLoans = Loan::whereHas('borrower', function($q) use ($inputIds) {
                     $q->whereIn('employee_id', $inputIds);
@@ -542,19 +530,10 @@ class FinanceController extends Controller
                 ->with('borrower')
                 ->get();
 
-            // 3. Strict Check: If the count of valid loans doesn't match the unique input count,
-            // it means at least one ID broke the condition.
             $foundEmployeeIds = $matchingLoans->pluck('borrower.employee_id')->toArray();
             
-            // Pass only the pristine, fully-compliant array of IDs down to the export
             $validEmployeeIds = $foundEmployeeIds;
 
-            // OPTIONAL: If you want to abort entirely if ONE ID breaks the condition instead of just filtering:
-            /*
-            if (count($inputIds) !== count($foundEmployeeIds)) {
-                return back()->withErrors(['employee_ids' => 'One or more provided Employee IDs do not match the specified Employee Type or Payment Preference constraints.']);
-            }
-            */
         }
 
         $scheduleDate = $scheduleMonth;
@@ -570,7 +549,6 @@ class FinanceController extends Controller
         $filename = "regular_loans_sched_{$scheduleDate}.xlsx";
 
         return Excel::download(
-            // Pass $validEmployeeIds instead of raw string input to ensure data integrity
             new RegularLoanSchedExport($year, $officeFilter, $employeeType, $scheduleMonth, $scheduleDate, $validEmployeeIds),
             $filename
         );

@@ -100,7 +100,6 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-1 gap-4" x-data="{ showRegisterPassword: false, showConfirmPassword: false }">
                     
-                    <!-- Password Field -->
                     <div class="input-group relative">
                         <input x-bind:type="showRegisterPassword ? 'text' : 'password'" name="password" placeholder="Password (Min. 6 chars)"
                             class="glass-input w-full pl-5 pr-12 py-3.5 rounded-2xl outline-none text-gray-800 placeholder-gray-500 shadow-sm block">
@@ -116,7 +115,7 @@
                         </button>
                     </div>
 
-                    <!-- Confirm Password Field -->
+
                     <div class="input-group relative">
                         <input x-bind:type="showConfirmPassword ? 'text' : 'password'" name="password_confirmation" placeholder="Confirm Password"
                             class="glass-input w-full pl-5 pr-12 py-3.5 rounded-2xl outline-none text-gray-800 placeholder-gray-500 shadow-sm block">
@@ -133,7 +132,6 @@
                     </div>
                 </div>
                 
-                <!-- Display password validation errors below the grid -->
                 @error('password')
                     <p class="text-red-600 text-xs mt-1.5 font-medium ml-2 text-center">{{ $message }}</p>
                 @enderror
@@ -164,7 +162,6 @@
         </div>
     </div>
     
-    <!-- Include Alpine just for the password toggle functionality -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>
 </html>

@@ -3,7 +3,6 @@
 @section('content')
 
 <style>
-    /* Dashboard Specific Glass Styles */
     .glass-filter {
         background: rgba(255, 255, 255, 0.5);
         backdrop-filter: blur(10px);
@@ -39,7 +38,6 @@
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
 
-    /* Apple-style Tabs */
     .apple-tabs {
         border-bottom: 1px solid rgba(0,0,0,0.1);
         gap: 1rem;
@@ -68,7 +66,6 @@
         border-radius: 3px 3px 0 0;
     }
 
-    /* Glass Form Inputs (General) */
     .glass-input {
         background: rgba(255, 255, 255, 0.5) !important;
         border: 1px solid rgba(255, 255, 255, 0.8);
@@ -88,7 +85,6 @@
         border-color: rgba(0,0,0,0.05) !important;
     }
 
-    /* Custom Validation Styling Fixes */
     .was-validated .glass-input:invalid,
     .glass-input.is-invalid,
     .was-validated .form-select:invalid {
@@ -108,7 +104,6 @@
         margin-top: 0.25rem;
     }
 
-    /* DataTables Transparent Overrides */
     .dataTables_wrapper .dataTables_length select,
     .dataTables_wrapper .dataTables_filter input {
         border-radius: 8px;
@@ -120,7 +115,6 @@
         box-shadow: inset 0 0 0 9999px rgba(0, 122, 255, 0.05);
     }
 
-    /* MODALS */
     .modal-backdrop.show {
         opacity: 1 !important; 
         background: rgba(0, 0, 0, 0.15) !important; 
@@ -160,7 +154,6 @@
         background: linear-gradient(90deg, #34c759, #007aff);
     }
 
-    /* SUMMARY TAB CARDS */
     .metric-card {
         background: rgba(255, 255, 255, 0.7);
         border: 1px solid rgba(255, 255, 255, 0.9);
@@ -179,14 +172,13 @@
         margin-bottom: 0.5rem;
     }
     .metric-value {
-        font-size: 1.15rem; /* Adjusted for smaller text */
+        font-size: 1.15rem; 
         font-weight: 700;
         color: var(--text-primary);
     }
 
-    /* Table Adjustments */
     #loansTable th, #loansTable td {
-        font-size: 0.75rem; /* Reduced table text size */
+        font-size: 0.75rem; 
     }
 </style>
 
@@ -382,7 +374,6 @@
                             $overallTotal = 0;
                         @endphp
                         
-                        <!-- Removed scrollable wrapper to let content flow naturally -->
                         <div class="pe-1">
                             @forelse($summary['loans_per_type'] as $lType => $counts)
                                 @php 
@@ -398,7 +389,6 @@
                             @endforelse
                         </div>
 
-                        <!-- Pushed the total to the bottom using mt-auto -->
                         @if(!empty($summary['loans_per_type']))
                             <div class="d-flex justify-content-between small pt-1 mt-auto" style="border-top-width: 2px !important;">
                                 <span class="text-dark fw-bold">TOTAL</span>
@@ -605,7 +595,6 @@
                                         <div class="invalid-feedback" id="amount_error" style="display: none;">Amount must be greater than zero.</div>
                                     </div>
 
-                                    <!-- CASAB BONUS SELECTION -->
                                     <div class="col-md-4" id="casab_date_col" style="display: none;">
                                         <label class="small text-secondary mb-1 fw-semibold text-success">Select Bonus Deduction Date <span class="text-danger">*</span></label>
                                         <select id="casab_date_select" class="form-select glass-input px-3 py-2 fw-bold text-success border-success" onchange="syncCasabDate()"></select>
@@ -790,7 +779,6 @@
             });
         }
 
-        // Reset Form on Modal Close
         $('#createLoanModal').on('hidden.bs.modal', function () {
             $('#loanForm')[0].reset();
             
@@ -856,15 +844,13 @@
                 
                 if (monthsCol) monthsCol.style.display = 'none';
                 
-                // Show dates but make them readonly
                 startDateCol.style.display = 'block';
                 endDateCol.style.display = 'block';
                 document.getElementById('start_date').setAttribute('readonly', true);
                 document.getElementById('end_date').setAttribute('readonly', true);
                 document.getElementById('start_date').classList.add('bg-light');
                 document.getElementById('end_date').classList.add('bg-light');
-                
-                // Auto calc CASAB payment start: App Date + 1 Day
+
                 document.getElementById('start_date').value = addDaysToDateStr(appDateStr, 1);
 
                 if(casabDateCol) casabDateCol.style.display = 'block';
@@ -942,27 +928,23 @@
 
             let employeeTypeCol = document.getElementById('employee_type_col');
             let employeeTypeSelect = document.getElementById('employee_type');
-            let employeeIdCol = document.getElementById('employee_id_col'); // Target the new ID
+            let employeeIdCol = document.getElementById('employee_id_col'); 
 
             if (type === 'REGULAR SALARY LOAN') {
-                // Show Employee Type and make it required
                 if (employeeTypeCol) employeeTypeCol.style.display = 'block';
                 if (employeeTypeSelect) employeeTypeSelect.setAttribute('required', 'required');
                 
-                // Shrink Employee ID to col-6 so they sit side-by-side
                 if (employeeIdCol) {
                     employeeIdCol.classList.remove('col-12');
                     employeeIdCol.classList.add('col-md-6');
                 }
             } else {
-                // Hide Employee Type and remove requirement
                 if (employeeTypeCol) employeeTypeCol.style.display = 'none';
                 if (employeeTypeSelect) {
                     employeeTypeSelect.removeAttribute('required');
                     employeeTypeSelect.value = "";
                 }
                 
-                // Expand Employee ID to full width
                 if (employeeIdCol) {
                     employeeIdCol.classList.remove('col-md-6');
                     employeeIdCol.classList.add('col-12');
@@ -1053,7 +1035,6 @@
             let dates = ['date_applied', 'start_date', 'end_date'];
             dates.forEach(function(id) {
                 let el = document.getElementById(id);
-                // Allow specific dynamic skips 
                 if (type === 'CASAB' && (id === 'start_date' || id === 'end_date')) return;
                 
                 if (el.value < '2026-01-01') {
@@ -1115,7 +1096,6 @@
             
             let typeSelect = document.querySelector('select[name="type"]');
             if (typeSelect && typeSelect.value === 'CASAB') {
-                // For CASAB start date is applied date + 1
                 document.getElementById('start_date').value = addDaysToDateStr(appliedDate, 1);
                 window.syncCasabDate(); 
             } else {
@@ -1201,7 +1181,7 @@
             if(typeSelect.value === 'SPECIAL LOAN') maxTerm = 6;
             if(typeSelect.value === 'CASAB') {
                 calculateAll();
-                return; // Month is locked to 1
+                return; 
             }
         }
 
@@ -1255,9 +1235,7 @@
         let typeSelect = document.querySelector('select[name="type"]');
         let type = typeSelect ? typeSelect.value : '';
 
-        // DYNAMIC INTEREST CALCULATION
         if (type === 'CASAB') {
-            // CASAB FORMULA: Principal * (total days covered / 30) * base_interest
             let appDateStr = document.getElementById('start_date').value;
             let bonusDateStr = document.getElementById('end_date').value;
             

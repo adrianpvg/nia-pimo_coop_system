@@ -12,7 +12,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        /* --- MAC-INSPIRED GLASSMORPHISM THEME --- */
         :root {
             --glass-bg: rgba(255, 255, 255, 0.45);
             --glass-border: rgba(255, 255, 255, 0.6);
@@ -38,7 +37,6 @@
             overflow-x: hidden;
         }
 
-        /* Glass Panel Base Class */
         .glass-panel {
             background: linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.3));
             backdrop-filter: var(--glass-blur);
@@ -48,7 +46,6 @@
             border-radius: var(--apple-radius);
         }
 
-        /* Layout Structure */
         .app-layout {
             display: flex;
             height: 100vh;
@@ -57,7 +54,6 @@
             position: relative;
         }
 
-        /* --- LEFT SIDEBAR --- */
         .sidebar {
             width: 280px;
             display: flex;
@@ -97,7 +93,6 @@
             margin: 0;
         }
 
-        /* Interactive Navigation Links */
         .nav-link {
             display: flex;
             align-items: center;
@@ -135,7 +130,6 @@
         }
         .nav-link.logout-link:hover i { color: #ff3b30; }
 
-        /* --- MAIN CONTENT AREA --- */
         .main-wrapper {
             flex: 1;
             display: flex;
@@ -151,9 +145,6 @@
             padding: 2rem;
         }
 
-        /* --- RESPONSIVE DESIGN (MOBILE & TABLET) --- */
-        
-        /* Sidebar Overlay Background */
         .sidebar-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -170,7 +161,6 @@
             visibility: visible;
         }
 
-        /* Floating Circular Hamburger Button (Hidden on Desktop) */
         .mobile-menu-btn {
             display: none; 
             position: fixed;
@@ -193,14 +183,13 @@
             transition: all 0.2s ease;
         }
         .mobile-menu-btn:active {
-            transform: scale(0.92); /* Gentle pop effect when tapped */
+            transform: scale(0.92); 
         }
 
-        /* Breakpoint for Tablets and below */
         @media (max-width: 991.98px) {
             .app-layout {
                 padding: 1rem;
-                padding-top: 5.5rem; /* Make room so content doesn't sit under the floating button */
+                padding-top: 5.5rem; 
                 flex-direction: column; 
             }
 
@@ -220,7 +209,7 @@
             }
 
             .mobile-menu-btn {
-                display: flex; /* Show the floating circle button */
+                display: flex; 
             }
 
             .main-wrapper {
@@ -233,7 +222,6 @@
             }
         }
 
-        /* --- MODALS (Layer Blur) --- */
         .modal-backdrop.show {
             opacity: 0.4;
             backdrop-filter: blur(8px);
@@ -276,8 +264,7 @@
                 <hr>
                 <ul class="nav-menu">
                     <li><a href="{{ route('finance.index') }}" class="nav-link {{ request()->routeIs('finance.*') ? 'active' : '' }}"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a></li>
-                    <!-- <li><a href="#" class="nav-link"><i class="bi bi-cloud-arrow-up"></i> Exports</a></li>
-                    <li><a href="#" class="nav-link"><i class="bi bi-cloud-arrow-down"></i> Imports</a></li> -->
+
                 </ul>
             </div>
 
@@ -350,13 +337,11 @@
             const mobileMenuBtn = document.getElementById('mobileMenuBtn');
             const sidebarOverlay = document.getElementById('sidebarOverlay');
 
-            // Open sidebar
             mobileMenuBtn.addEventListener('click', function () {
                 sidebar.classList.add('active');
                 sidebarOverlay.classList.add('active');
             });
 
-            // Close sidebar when clicking the overlay backdrop
             sidebarOverlay.addEventListener('click', function () {
                 sidebar.classList.remove('active');
                 sidebarOverlay.classList.remove('active');

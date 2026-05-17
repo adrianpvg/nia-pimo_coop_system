@@ -5,8 +5,8 @@ use Illuminate\Database\Eloquent\Model;
 class Payment extends Model {
     protected $fillable = [
         'loan_id', 
-        'created_by',    // Added
-        'updated_by',    // Added
+        'created_by',    
+        'updated_by',    
         'period_covered', 
         'amount_paid', 
         'interest', 
@@ -18,7 +18,6 @@ class Payment extends Model {
         return $this->belongsTo(\App\Models\Loan::class); 
     }
 
-    // NEW: Explicit relationships for the two different user tracking columns
     public function creator() { 
         return $this->belongsTo(\App\Models\User::class, 'created_by'); 
     }

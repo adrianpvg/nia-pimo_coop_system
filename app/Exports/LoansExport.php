@@ -31,21 +31,17 @@ class LoansExport implements FromArray, ShouldAutoSize, WithColumnFormatting, Wi
         $this->office = $office;
     }
 
-    /**
-     * Add Left and Right Header Images
-     */
     public function drawings()
     {
         $drawings = [];
 
-        // 1. LEFT HEADER IMAGE
         $drawingLeft = new Drawing();
         $drawingLeft->setName('NIA COOP Left Header');
         $drawingLeft->setDescription('NIA COOP Left Header');
         $drawingLeft->setPath(public_path('images/left-header.png')); 
         $drawingLeft->setHeight(100); 
-        $drawingLeft->setCoordinates('A1'); // Anchor to top left
-        $drawingLeft->setOffsetX(16); // Slight padding from the left edge
+        $drawingLeft->setCoordinates('A1'); 
+        $drawingLeft->setOffsetX(16); 
         $drawings[] = $drawingLeft;
 
         // 2. RIGHT HEADER IMAGE
@@ -54,8 +50,6 @@ class LoansExport implements FromArray, ShouldAutoSize, WithColumnFormatting, Wi
         $drawingRight->setDescription('NIA COOP Right Header');
         $drawingRight->setPath(public_path('images/right-header.png')); 
         $drawingRight->setHeight(60); 
-        // Anchor to the right side. If the image spills past column N, 
-        // change this to 'K1' or 'M1' depending on the exact width of your image.
         $drawingRight->setCoordinates('N1'); 
         $drawingRight->setOffsetY(11);
         $drawingRight->setOffsetX(14);

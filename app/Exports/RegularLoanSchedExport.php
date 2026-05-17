@@ -29,7 +29,7 @@ class RegularLoanSchedExport implements FromArray, WithStyles, WithColumnWidths,
         $this->employeeType = $employeeType;
         $this->scheduleMonth = $scheduleMonth;
         $this->scheduleDate = $scheduleDate;
-        $this->employeeIds = $employeeIds; // Can now accept a string OR an array
+        $this->employeeIds = $employeeIds; 
     }
 
     public function drawings()
@@ -69,7 +69,7 @@ class RegularLoanSchedExport implements FromArray, WithStyles, WithColumnWidths,
             $query->where('employee_type', $this->employeeType);
         }
 
-        // --- FIXED: Safe Array vs String validation logic ---
+        // Safe Array vs String validation logic 
         $idsArray = [];
         if (is_array($this->employeeIds)) {
             $idsArray = array_filter($this->employeeIds);
@@ -82,7 +82,6 @@ class RegularLoanSchedExport implements FromArray, WithStyles, WithColumnWidths,
                 $q->whereIn('employee_id', $idsArray);
             });
         }
-        // -----------------------------------------------------
 
         $loans = $query->get();
 

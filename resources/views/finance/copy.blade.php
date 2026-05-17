@@ -3,7 +3,6 @@
 @section('content')
 
 <style>
-    /* Dashboard Specific Glass Styles */
     .glass-filter {
         background: rgba(255, 255, 255, 0.5);
         backdrop-filter: blur(10px);
@@ -39,7 +38,6 @@
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     }
 
-    /* Apple-style Tabs */
     .apple-tabs {
         border-bottom: 1px solid rgba(0,0,0,0.1);
         gap: 1rem;
@@ -68,7 +66,6 @@
         border-radius: 3px 3px 0 0;
     }
 
-    /* Glass Form Inputs (General) */
     .glass-input {
         background: rgba(255, 255, 255, 0.5) !important;
         border: 1px solid rgba(255, 255, 255, 0.8);
@@ -88,7 +85,6 @@
         border-color: rgba(0,0,0,0.05) !important;
     }
 
-    /* Custom Validation Styling Fixes */
     .was-validated .glass-input:invalid,
     .glass-input.is-invalid,
     .was-validated .form-select:invalid {
@@ -108,7 +104,6 @@
         margin-top: 0.25rem;
     }
 
-    /* DataTables Transparent Overrides */
     .dataTables_wrapper .dataTables_length select,
     .dataTables_wrapper .dataTables_filter input {
         border-radius: 8px;
@@ -120,7 +115,6 @@
         box-shadow: inset 0 0 0 9999px rgba(0, 122, 255, 0.05);
     }
 
-    /* MODALS */
     .modal-backdrop.show {
         opacity: 1 !important; 
         background: rgba(0, 0, 0, 0.15) !important; 
@@ -160,7 +154,6 @@
         background: linear-gradient(90deg, #34c759, #007aff);
     }
 
-    /* SUMMARY TAB CARDS */
     .metric-card {
         background: rgba(255, 255, 255, 0.7);
         border: 1px solid rgba(255, 255, 255, 0.9);
@@ -560,49 +553,6 @@
                                         <div class="invalid-feedback">Enter a valid integer (1 to 36).</div>
                                     </div>
 
-                                    <!-- <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold">Service Fee (0.5%)</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
-                                            <input type="text" id="service_fee_display" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
-                                            <input type="hidden" name="service_fee" id="service_fee">
-                                        </div>
-                                    </div> -->
-
-                                    <!-- <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold text-dark">Interest Rate (%)</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; border-color: rgba(0,0,0,0.1);">
-                                            <input type="number" step="0.01" id="interest_rate_input" name="interest_rate" class="form-control bg-transparent border-0 py-2 shadow-none text-center fw-bold" value="9" min="0" oninput="calculateAll()" required>
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-2 pe-3">%</span>
-                                        </div>
-                                        <div class="invalid-feedback">Enter a valid rate.</div>
-                                    </div> -->
-
-                                    <!-- <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold text-dark">Interest Rate (%)</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <input type="number" step="0.01" id="interest_rate_input" name="interest_rate" class="form-control bg-transparent border-0 py-2 shadow-none text-center fw-bold" value="0" readonly required>
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-2 pe-3">%</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold">Interest Amount</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
-                                            <input type="text" id="interest_display" class="form-control bg-transparent border-0 py-2 shadow-none fw-bold text-dark" readonly>
-                                            <input type="hidden" name="interest" id="interest">
-                                        </div>
-                                    </div>
-
-                                    <div class="col-md-3 mt-3">
-                                        <label class="small text-secondary mb-1 fw-semibold">Surcharge</label>
-                                        <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
-                                            <span class="input-group-text bg-transparent border-0 text-muted ps-3 pe-1 small">₱</span>
-                                            <input type="text" id="surcharge_display" class="form-control bg-transparent border-0 py-2 shadow-none" readonly>
-                                            <input type="hidden" name="surcharge" id="surcharge">
-                                        </div>
-                                    </div> -->
                                     <div class="col-md-2 mt-3">
                                         <label class="small text-secondary mb-1 fw-semibold">Service (0.5%)</label>
                                         <div class="input-group glass-input" style="padding: 0; overflow: hidden; background: rgba(0,0,0,0.02) !important;">
@@ -692,8 +642,6 @@
 <script>
     $(document).ready(function() { 
         $('#createLoanModal').appendTo('body');
-        
-        // NEW: Ensure all dynamically generated delete modals go to the body
         $('.loan-delete-modal').appendTo('body');
 
         // Init DataTables
@@ -744,18 +692,15 @@
             });
         }
 
-        // Intercept form submission to run native Bootstrap validations
         document.getElementById('loanForm').addEventListener('submit', function(event) {
             let isValid = true;
             
-            // Check native HTML5 constraints
             if (!this.checkValidity()) {
                 event.preventDefault();
                 event.stopPropagation();
                 isValid = false;
             }
 
-            // Custom Amount Validation
             let amount = parseFloat(document.getElementById('amount').value) || 0;
             if (amount <= 0) {
                 document.getElementById('amount_display').classList.add('is-invalid');
@@ -768,7 +713,6 @@
                 document.getElementById('amount_error').style.display = 'none';
             }
 
-            // Custom Months Validation
             let months = parseInt(document.getElementById('months').value) || 0;
             if (months < 1 || months > 120) {
                 document.getElementById('months').classList.add('is-invalid');
@@ -777,7 +721,6 @@
                 document.getElementById('months').classList.remove('is-invalid');
             }
 
-            // Custom Dates Validation
             let dates = ['date_applied', 'start_date', 'end_date'];
             dates.forEach(function(id) {
                 let el = document.getElementById(id);
@@ -797,9 +740,7 @@
         }, false);
     });
 
-    // UX: Clean letters while typing and block negative sign entirely
     function cleanCurrencyInput(input) {
-        // Strip everything except numbers and a single decimal point (blocks '-')
         let val = input.value.replace(/[^0-9.]/g, '');
         let parts = val.split('.');
         if (parts.length > 2) {
@@ -810,7 +751,6 @@
         document.getElementById('amount').value = val || 0;
         input.value = val;
         
-        // Remove error state instantly when they start typing a valid number
         if(parseFloat(val) > 0) {
             input.classList.remove('is-invalid');
             document.getElementById('amount_group').classList.remove('invalid-group');
@@ -835,7 +775,6 @@
     function syncDate() {
         let appliedDate = document.getElementById('date_applied').value;
         if (appliedDate) {
-            // Auto correct if they type a date before 2026
             if(appliedDate < '2026-01-01') {
                 document.getElementById('date_applied').value = '2026-01-01';
                 appliedDate = '2026-01-01';
@@ -870,17 +809,13 @@
             let eMonth = parseInt(eParts[1]);
             let eDay = parseInt(eParts[2]);
 
-            // Prevent end date from being before/equal to start date
             if (endInput <= startInput) {
                 document.getElementById('months').value = 1;
                 calculateFromMonths(); 
                 return; 
             } else {
-                // Pure calendar month calculation (e.g. Feb 2026 to Mar 2026 = 1 month)
                 let months = (eYear - sYear) * 12 + (eMonth - sMonth);
                 
-                // Adjust if the end day is earlier in the month than the start day
-                // (Unless it's the strict end of the month)
                 if (eDay < sDay) {
                     let eDaysInMonth = new Date(eYear, eMonth, 0).getDate();
                     if (eDay < eDaysInMonth) {
@@ -902,7 +837,6 @@
         let startInput = document.getElementById('start_date').value;
         let monthsField = document.getElementById('months');
         
-        // Remove non-numbers
         monthsField.value = monthsField.value.replace(/[^0-9]/g, '');
 
         if(monthsField.value === "") {
@@ -927,13 +861,11 @@
             let year = parseInt(parts[0]);
             let month = parseInt(parts[1]);
             let day = parseInt(parts[2]);
-            
-            // Mathematically precise month addition
+
             month += monthsInput;
             year += Math.floor((month - 1) / 12);
             month = ((month - 1) % 12) + 1;
             
-            // Catch edge cases like "February 31st" and clamp to "February 28/29th"
             let daysInMonth = new Date(year, month, 0).getDate();
             if (day > daysInMonth) day = daysInMonth;
             
@@ -1000,7 +932,6 @@
         let net = amount - (serviceFee + surcharge + interest); 
         if(net < 0) net = 0;
 
-        // NEW: Calculate Total to Pay (Principal + Interest)
         let totalToPay = amount + interest;
 
         document.getElementById('service_fee_display').value = serviceFee.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -1010,13 +941,10 @@
         document.getElementById('net_proceeds_display').value = '₱ ' + net.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         document.getElementById('net_proceeds_actual').value = net.toFixed(2);
 
-        // NEW: Display Total to Pay
         document.getElementById('total_pay_display').value = '₱ ' + totalToPay.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     }
 
-    // PASTE THIS RIGHT BELOW calculateAll()
     function printLoanSchedule() {
-        // 1. Gather inputs securely
         let applicantInput = document.querySelector('input[name="borrower_name"]');
         let applicantName = applicantInput && applicantInput.value ? applicantInput.value : '_______________________';
 
@@ -1033,7 +961,6 @@
         let startDateInput = document.getElementById('start_date').value;
         let endDateInput = document.getElementById('end_date').value;
 
-        // 2. Setup Math Engine
         let totalPeriods = months * 2;
         let monthlyRate = monthlyRatePercentage / 100;
         let halfMonthRate = monthlyRate / 2;
@@ -1059,7 +986,6 @@
         let sumInterest = 0;
         let sumTotal = 0;
 
-        // 3. Loop through and generate periods
         for (let i = 1; i <= totalPeriods; i++) {
             let isFirstHalf = (i % 2 !== 0);
 
@@ -1111,7 +1037,6 @@
             }
         }
 
-        // 4. Construct the HTML for the Print Window
         let printContent = `
             <html>
             <head>
@@ -1192,7 +1117,6 @@
             </html>
         `;
 
-        // 5. Open new window and trigger print
         let printWindow = window.open('', '_blank', 'width=900,height=700');
         if(printWindow) {
             printWindow.document.open();

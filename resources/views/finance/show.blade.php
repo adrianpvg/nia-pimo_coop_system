@@ -31,7 +31,6 @@
         border-color: rgba(0,0,0,0.05) !important;
     }
 
-    /* Custom Validation Styling Fixes */
     .was-validated .glass-input:invalid,
     .glass-input.is-invalid {
         border-color: #dc3545 !important;
@@ -50,7 +49,6 @@
         margin-top: 0.25rem;
     }
 
-    /* MODALS */
     .modal-backdrop.show {
         opacity: 1 !important; 
         background: rgba(0, 0, 0, 0.15) !important; 
@@ -67,7 +65,6 @@
         box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15), inset 0 0 0 1px rgba(255,255,255,0.5);
     }
 
-    /* Inner Form Panel for consistent nesting */
     .form-inner-panel {
         background: rgba(255, 255, 255, 0.4);
         border: 1px solid rgba(255, 255, 255, 0.6);
@@ -75,13 +72,11 @@
         box-shadow: 0 4px 15px rgba(0,0,0,0.02);
     }
 
-    /* Table Hover overrides for Glass UI */
     table.dataTable.table-hover > tbody > tr:hover > *,
     .table-hover > tbody > tr:hover > * {
         box-shadow: inset 0 0 0 9999px rgba(0, 122, 255, 0.05);
     }
 
-    /* Apple-style Tabs for Show Page */
     .apple-tabs {
         border-bottom: 1px solid rgba(0,0,0,0.1);
         gap: 1rem;
@@ -110,7 +105,6 @@
         border-radius: 3px 3px 0 0;
     }
 
-    /* Improved Detail Rows to Prevent Squishing */
     .detail-row {
         display: flex;
         justify-content: space-between;
@@ -154,9 +148,6 @@
     </a>
 </div>
 
-<!-- ========================================== -->
-<!-- UPDATED COMPREHENSIVE LOAN DETAILS PANEL   -->
-<!-- ========================================== -->
 <div class="glass-panel p-4 mb-4 shadow-sm position-relative overflow-hidden">
     <div class="position-absolute top-0 start-0 w-100" style="height: 4px; background: linear-gradient(90deg, #34c759, #007aff);"></div>
     
@@ -188,7 +179,6 @@
     @endphp
 
     <div class="row g-5">
-        <!-- Column 1: Borrower Information -->
         <div class="col-lg-4 col-md-6">
             <div class="text-muted small text-uppercase fw-bold mb-3"><i class="bi bi-person-badge me-2 text-primary"></i>Borrower Profile</div>
             <h5 class="fw-bold text-dark mb-2">{{ $loan->borrower->name }}</h5>
@@ -229,7 +219,6 @@
             </div>
         </div>
 
-        <!-- Column 2: Application Timeline -->
         <div class="col-lg-4 col-md-6">
             <div class="text-muted small text-uppercase fw-bold mb-3"><i class="bi bi-calendar-event me-2 text-info"></i>Application Info</div>
             
@@ -265,7 +254,6 @@
             </div>
         </div>
 
-        <!-- Column 3: Status & Balances -->
         <div class="col-lg-4 col-md-12">
             <div class="text-muted small text-uppercase fw-bold mb-3"><i class="bi bi-wallet2 me-2 text-warning"></i>Status & Balance</div>
 
@@ -287,7 +275,6 @@
         </div>
     </div>
 
-    <!-- Financial Breakdown Horizontal Panel -->
     <div class="mt-4 pt-4 border-top" style="border-color: rgba(0,0,0,0.08) !important;">
         <div class="text-muted small text-uppercase fw-bold mb-3"><i class="bi bi-cash-coin me-2 text-success"></i>Financial Breakdown</div>
         <div class="row g-3">
@@ -319,7 +306,7 @@
     </div>
 
 </div>
-<!-- ========================================== -->
+
 
 
 <ul class="nav nav-tabs apple-tabs mb-4" id="loanTabs" role="tablist">
@@ -443,7 +430,6 @@
                     </table>
                 </div>
             @else
-                <!-- REGULAR & CASAB LOAN SCHEDULE TABLE -->
                 <div class="table-responsive">
                     <table class="table table-hover text-center align-middle mb-0">
                         <thead style="background: rgba(0, 122, 255, 0.05); border-bottom: 1px solid rgba(0, 122, 255, 0.1);">
@@ -652,12 +638,9 @@
         </div>
     </div>
 </div>        
-<!-- ========================================================================= -->
-<!-- IMPORTANT: All Modals are placed in a wrapper so JS can move them easily  -->
-<!-- ========================================================================= -->
+
 @push('modals')
 <div id="all-modals-container">
-    <!-- EDIT LOAN MODAL -->
     <div class="modal fade" id="editLoanModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content glass-modal-content border-0">
@@ -727,7 +710,6 @@
             </div>
         </div>
     </div>                            
-    <!-- ACTUAL MONTHS MODAL -->
     <div class="modal fade" id="actualMonthsModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content glass-modal-content border-0">
@@ -768,7 +750,6 @@
                             </div>
                         @endif
 
-                        <!-- Payment Preference Radio Buttons (Only for Regular Loans) -->
                         @if($loan->type === 'REGULAR SALARY LOAN')
                         <div class="form-inner-panel p-3 mb-3">
                             <label class="small text-secondary mb-3 fw-semibold d-block">Payment Method</label>
@@ -811,7 +792,6 @@
         </div>
     </div>
 
-    <!-- ADD PAYMENT MODAL -->
     <div class="modal fade" id="addPaymentModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content glass-modal-content border-0">
@@ -932,7 +912,6 @@
         </div>
     </div>
 
-    <!-- DELETE LOAN MODAL -->
     <div class="modal fade" id="deleteLoanModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content glass-modal-content">
@@ -956,7 +935,6 @@
         </div>
     </div>
 
-    <!-- DYNAMIC EDIT & DELETE PAYMENT MODALS -->
     @foreach($loan->payments as $pay)
         <!-- EDIT PAYMENT MODAL -->
         <div class="modal fade" id="editPaymentModal{{ $pay->id }}" tabindex="-1" aria-hidden="true">
@@ -996,7 +974,6 @@
             </div>
         </div>
 
-        <!-- DELETE PAYMENT MODAL -->
         <div class="modal fade" id="deletePaymentModal{{ $pay->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content glass-modal-content">
@@ -1060,7 +1037,6 @@
                     let maxTerm = 36;
                     if ('{{ $loan->type }}' === 'SPECIAL LOAN') maxTerm = 6;
 
-                    // CASAB is validated silently by backend math, input is hidden
                     if ('{{ $loan->type }}' !== 'CASAB') {
                         if (val < 1 || val > maxTerm) {
                             input.classList.add('is-invalid');

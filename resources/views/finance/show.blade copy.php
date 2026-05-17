@@ -31,7 +31,6 @@
         border-color: rgba(0,0,0,0.05) !important;
     }
 
-    /* Custom Validation Styling Fixes */
     .was-validated .glass-input:invalid,
     .glass-input.is-invalid {
         border-color: #dc3545 !important;
@@ -50,7 +49,6 @@
         margin-top: 0.25rem;
     }
 
-    /* MODALS */
     .modal-backdrop.show {
         opacity: 1 !important; 
         background: rgba(0, 0, 0, 0.15) !important; 
@@ -67,7 +65,6 @@
         box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15), inset 0 0 0 1px rgba(255,255,255,0.5);
     }
 
-    /* Inner Form Panel for consistent nesting */
     .form-inner-panel {
         background: rgba(255, 255, 255, 0.4);
         border: 1px solid rgba(255, 255, 255, 0.6);
@@ -75,13 +72,11 @@
         box-shadow: 0 4px 15px rgba(0,0,0,0.02);
     }
 
-    /* Table Hover overrides for Glass UI */
     table.dataTable.table-hover > tbody > tr:hover > *,
     .table-hover > tbody > tr:hover > * {
         box-shadow: inset 0 0 0 9999px rgba(0, 122, 255, 0.05);
     }
 
-    /* Apple-style Tabs for Show Page */
     .apple-tabs {
         border-bottom: 1px solid rgba(0,0,0,0.1);
         gap: 1rem;
@@ -258,10 +253,8 @@
                     </table>
                 </div>
             @else
-                <!-- ORIGINAL REGULAR LOAN SCHEDULE TABLE -->
                 <div class="table-responsive">
                     <table class="table table-hover text-center align-middle mb-0">
-                        <!-- ... Keep your existing <thead> and <tbody> for the normal schedule here ... -->
                         <thead style="background: rgba(0, 122, 255, 0.05); border-bottom: 1px solid rgba(0, 122, 255, 0.1);">
                             <tr class="small text-uppercase text-secondary">
                                 <th class="py-3">Seq. No.</th>
@@ -401,14 +394,10 @@
         </div>
     </div>
 </div>        
-<!-- ========================================================================= -->
-<!-- IMPORTANT: All Modals are placed in a wrapper so JS can move them easily  -->
-<!-- ========================================================================= -->
+
 @push('modals')
 <div id="all-modals-container">
 
-    <!-- ACTUAL MONTHS MODAL -->
-    <!-- ACTUAL MONTHS MODAL -->
     <div class="modal fade" id="actualMonthsModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content glass-modal-content border-0">
@@ -442,13 +431,11 @@
                             </div>
                         </div>
 
-                        <!-- NEW: Payment Preference Radio Buttons (Only for Regular Loans) -->
                         @if($loan->type === 'REGULAR SALARY LOAN')
                         <div class="form-inner-panel p-3 mb-3">
                             <label class="small text-secondary mb-3 fw-semibold d-block">Payment Method</label>
                             
                             <div class="row justify-content-center text-center">
-                                <!-- Casual / 15th & 30th Column -->
                                 <div class="col-sm-6 mb-3 mb-sm-0">
                                     <p class="mb-2 text-muted fw-semibold">Casual</p>
                                     <div class="form-check d-inline-block text-start">
@@ -457,7 +444,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Permanent / Monthly Column -->
                                 <div class="col-sm-6">
                                     <p class="mb-2 text-muted fw-semibold">Permanent</p>
                                     <div class="form-check d-inline-block text-start">
@@ -489,7 +475,6 @@
         </div>
     </div>
 
-    <!-- ADD PAYMENT MODAL -->
     <div class="modal fade" id="addPaymentModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content glass-modal-content border-0">
@@ -535,14 +520,12 @@
                                     @endphp
                                     
                                     @if($loan->type === 'SPECIAL LOAN')
-                                        <!-- For Special Loans, we just allow custom amount payments against the balance -->
                                         <input type="hidden" name="period_covered" value="SPECIAL-PAYMENT">
                                         <input type="hidden" name="is_special_payment" value="1">
                                         <div class="alert alert-info py-2 px-3 mb-0 small rounded-3">
                                             Special loans allow flexible payments against the remaining balance.
                                         </div>
                                     @else
-                                        <!-- For Regular Loans, select the specific period -->
                                         <select name="period_covered" id="period_covered" class="form-select glass-input fw-bold px-3 py-2" style="border-color: rgba(0, 122, 255, 0.4) !important;" required onchange="updatePaymentDisplay(this)">
                                             <option value="" disabled selected>Choose a billing period...</option>
                                             @foreach($groupedSchedules as $periodKey => $periodSchedules)
@@ -574,7 +557,6 @@
                                     <div class="p-3 rounded-4" style="background: rgba(0, 122, 255, 0.05); border: 1px solid rgba(0, 122, 255, 0.2);">
                                         
                                         @if($loan->type === 'SPECIAL LOAN')
-                                            <!-- Custom Amount Input for Special Loans -->
                                             <div class="mb-2">
                                                 <label class="small text-secondary mb-1 fw-bold">Enter Payment Amount <span class="text-danger">*</span></label>
                                                 <div class="input-group glass-input" style="padding: 0; overflow: hidden; border-color: rgba(0, 122, 255, 0.4); box-shadow: 0 4px 10px rgba(0, 122, 255, 0.05);">
@@ -584,7 +566,6 @@
                                                 <div class="small text-muted mt-1">Maximum payable: ₱{{ number_format($bal, 2) }}</div>
                                             </div>
                                         @else
-                                            <!-- Readonly Amount Display for Regular Loans -->
                                             <div class="d-flex justify-content-between align-items-center mb-2">
                                                 <span class="fw-bold text-dark small" style="letter-spacing: 0.5px;">TOTAL AMOUNT DUE</span>
                                                 <span class="fs-4 fw-bold text-primary" id="display_total_due">₱ 0.00</span>
@@ -609,7 +590,6 @@
         </div>
     </div>
 
-    <!-- DELETE LOAN MODAL -->
     <div class="modal fade" id="deleteLoanModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content glass-modal-content">
@@ -633,10 +613,8 @@
         </div>
     </div>
 
-    <!-- DYNAMIC EDIT & DELETE PAYMENT MODALS -->
     @foreach($loan->payments as $pay)
         
-        <!-- EDIT PAYMENT MODAL -->
         <div class="modal fade" id="editPaymentModal{{ $pay->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content glass-modal-content border-0">
@@ -674,7 +652,6 @@
             </div>
         </div>
 
-        <!-- DELETE PAYMENT MODAL -->
         <div class="modal fade" id="deletePaymentModal{{ $pay->id }}" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content glass-modal-content">
@@ -700,26 +677,22 @@
         </div>
         
     @endforeach
-</div> <!-- End all-modals-container -->
+</div> 
 @endpush
 
 @push('scripts')
 <script>
     $(document).ready(function() { 
-        // 1. THIS IS THE MAGIC FIX: Move the ENTIRE container of modals to the body
-        // This ensures they are completely immune to the Glassmorphism CSS blur.
         let modalsContainer = document.getElementById('all-modals-container');
         if (modalsContainer) {
             document.body.appendChild(modalsContainer);
         }
 
-        // Show Actual Months Modal automatically if missing
         @if(is_null($loan->actual_months))
             var myModal = new bootstrap.Modal(document.getElementById('actualMonthsModal'));
             myModal.show();
         @endif
 
-        // Validation for Actual Months Form
         let actualMonthsForm = document.getElementById('actualMonthsForm');
         if (actualMonthsForm) {
             actualMonthsForm.addEventListener('submit', function(event) {
@@ -757,7 +730,6 @@
             });
         }
         
-        // Intercept Add Payment Form
         let paymentForm = document.getElementById('paymentForm');
         if (paymentForm) {
             paymentForm.addEventListener('submit', function(event) {
@@ -786,7 +758,6 @@
         }
     });
 
-    // Update dynamic amount display when a billing month is chosen
     function updatePaymentDisplay(selectElement) {
         let selectedOption = selectElement.options[selectElement.selectedIndex];
         

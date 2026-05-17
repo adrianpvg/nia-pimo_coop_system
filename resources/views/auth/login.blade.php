@@ -15,7 +15,6 @@
         body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
         [x-cloak] { display: none !important; }
         
-        /* Video Background Styling */
         .video-bg-container {
             position: fixed;
             top: 0;
@@ -43,7 +42,6 @@
             z-index: 0;
         }
 
-        /* Apple Glass Input Base */
         .glass-input {
             background: rgba(255, 255, 255, 0.5);
             border: 1px solid rgba(255, 255, 255, 0.6);
@@ -52,14 +50,12 @@
             transition: all 0.3s ease;
         }
         
-        /* Apply focus styles when the input inside the group is focused */
         .input-group:focus-within .glass-input {
             background: rgba(255, 255, 255, 0.8);
             border-color: #007aff;
             box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.15);
         }
         
-        /* Added subtle glass effect to the reCAPTCHA container to blend with your UI */
         .recaptcha-wrapper {
             background: rgba(255, 255, 255, 0.3);
             padding: 8px;

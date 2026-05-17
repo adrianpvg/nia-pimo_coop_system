@@ -44,12 +44,10 @@ Route::middleware('guest')->group(function () {
             event(new Verified($user));
         }
 
-        // Dynamic success message
         if ($user->markEmailAsVerified()) {
             event(new Verified($user));
         }
 
-        // Dynamic success message
         $message = $user->is_active 
             ? 'Email successfully verified! You may now log in.' 
             : 'Email successfully verified! Your account is now pending Administrator approval.';
@@ -57,17 +55,10 @@ Route::middleware('guest')->group(function () {
         return redirect('/login')->with('success', $message);
     })->middleware(['signed'])->name('verification.verify');;
 });
-// ==========================================
-// AUTHENTICATED ROUTES (Must be logged in to access)
-// ==========================================
 Route::middleware('auth')->group(function () {
     
-    // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-    // ==========================================
-    // FINANCE MODULE
-    // ==========================================
     Route::prefix('finance')->group(function () {
         
         Route::get('/loans/{type?}', [FinanceController::class, 'index'])->name('finance.loans');
@@ -100,11 +91,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/members', [TeamController::class, 'index'])->name('team.index');
         Route::get('/create', [TeamController::class, 'create'])->name('team.create'); 
         Route::post('/store', [TeamController::class, 'store'])->name('team.store');
-        //Route::get('/show/{id}', [TeamController::class, 'show'])->name('team.show');
         Route::put('/update/{id}', [TeamController::class, 'update'])->name('team.update');
         Route::delete('/destroy/{id}', [TeamController::class, 'destroy'])->name('team.destroy');
         
-        // Logs Route
         Route::get('/logs', [TeamController::class, 'logs'])->name('team.logs'); 
         
     });

@@ -2,12 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Contracts\Auth\MustVerifyEmail; // 1. UNCOMMENT THIS
+use Illuminate\Contracts\Auth\MustVerifyEmail; 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-// 2. IMPLEMENT MustVerifyEmail
 class User extends Authenticatable implements MustVerifyEmail 
 {
     use HasFactory, Notifiable;
@@ -17,7 +16,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'type',
-        'is_active', // 3. ADD THIS
+        'is_active', 
     ];
 
     protected $hidden = [
