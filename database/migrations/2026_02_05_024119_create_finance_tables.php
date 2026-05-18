@@ -27,7 +27,7 @@ return new class extends Migration {
             $table->string('type');
             $table->enum('employee_type', ['Casual', 'COS', 'Permanent', 'Co-Terminous'])->nullable();
             
-            $table->string('control_number')->unique(); 
+            $table->string('control_number'); 
             $table->date('date_of_application'); 
             
             $table->decimal('amount_granted', 15, 2);

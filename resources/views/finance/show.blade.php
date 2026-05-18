@@ -662,13 +662,23 @@
                             </h6>
                             
                             <div class="row g-3">
-                                <div class="col-md-6">
+                                <div class="col-md-4">
+                                    <label class="small text-secondary mb-1 fw-semibold">Control Number <span class="text-danger">*</span></label>
+                                    <input type="text" name="control_number" id="edit_control_number_input" class="form-control glass-input px-3 py-2 @error('control_number') is-invalid @enderror" value="{{ old('control_number', $loan->control_number) }}" required>
+                                    
+                                    @error('control_number')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @else
+                                        <div class="invalid-feedback" id="edit_control_number_error">A valid Control Number is required (Format: YY-MM-NNN).</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-4">
                                     <label class="small text-secondary mb-1 fw-semibold">Application Date <span class="text-danger">*</span></label>
                                     <input type="date" name="date_of_application" class="form-control glass-input px-3 py-2" value="{{ \Carbon\Carbon::parse($loan->date_of_application)->format('Y-m-d') }}" required>
                                     <div class="invalid-feedback">Application date is required.</div>
                                 </div>
                                 
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <label class="small text-secondary mb-1 fw-semibold">Office <span class="text-danger">*</span></label>
                                     <select name="office_name" class="form-select glass-input px-3 py-2" required>
                                         @foreach($availableOffices as $off)
@@ -1003,6 +1013,58 @@
 
 @push('scripts')
 <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let editControlNumberInput = document.getElementById('edit_control_number_input');
+        
+        if (editControlNumberInput) {
+            editControlNumberInput.addEventListener('input', function(e) {
+                // Strip non-numbers
+                let val = this.value.replace(/\D/g, ''); 
+                let formatted = '';
+                
+                // Add dashes automatically
+                if (val.length > 0) formatted += val.substring(0, 2);
+                if (val.length > 2) formatted += '-' + val.substring(2, 4);
+                if (val.length > 4) formatted += '-' + val.substring(4, 7);
+                
+                this.value = formatted;
+
+                // Real-time validaton feedback
+                let regex = /^\d{2}-\d{2}-\d{3}$/;
+                let errorDiv = document.getElementById('edit_control_number_error');
+                
+                if (regex.test(formatted)) {
+                    this.classList.remove('is-invalid');
+                    if (errorDiv) errorDiv.style.display = 'none';
+                } else {
+                    this.classList.add('is-invalid');
+                    if (errorDiv) {
+                        errorDiv.style.display = 'block';
+                        errorDiv.innerText = "Format must be exactly YY-MM-NNN (e.g., 26-05-001).";
+                    }
+                }
+            });
+
+            // Prevent form submission if format is invalid
+            let editForm = editControlNumberInput.closest('form');
+            if (editForm) {
+                editForm.addEventListener('submit', function(event) {
+                    let regex = /^\d{2}-\d{2}-\d{3}$/;
+                    if (!regex.test(editControlNumberInput.value)) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        editControlNumberInput.classList.add('is-invalid');
+                        let errorDiv = document.getElementById('edit_control_number_error');
+                        if (errorDiv) {
+                            errorDiv.style.display = 'block';
+                            errorDiv.innerText = "Format must be exactly YY-MM-NNN (e.g., 26-05-001).";
+                        }
+                    }
+                });
+            }
+        }
+    });
+
     $(document).ready(function() { 
         let modalsContainer = document.getElementById('all-modals-container');
         if (modalsContainer) {

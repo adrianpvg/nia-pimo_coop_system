@@ -101,6 +101,15 @@ class FinanceController extends Controller
     public function store(Request $request)
     {
         $rules = [
+            'control_number' => [
+                'required', 
+                'string',
+                'regex:/^\d{2}-\d{2}-\d{3}$/',
+                // Ensures control number is unique, but ONLY within the selected loan type
+                \Illuminate\Validation\Rule::unique('loans')->where(function ($query) use ($request) {
+                    return $query->where('type', $request->type);
+                })
+            ],
             'type' => 'required|string',
             'borrower_name' => 'required|string',
             'employee_id' => 'required|string',
@@ -141,7 +150,10 @@ class FinanceController extends Controller
             $rules['payment_end'] = 'required|date|after_or_equal:payment_start';
         }
 
-        $request->validate($rules);
+        $request->validate($rules, [
+            'control_number.unique' => 'This Control Number already exists for the selected Loan Type.',
+            'control_number.regex' => 'The Control Number must follow the exact format YY-MM-NNN (e.g., 26-05-001).' // <-- ADDED MESSAGE
+        ]);
 
         if ($request->type === 'CASAB') {
             $endMonthDay = \Carbon\Carbon::parse($request->payment_end)->format('m-d');
@@ -157,24 +169,6 @@ class FinanceController extends Controller
                 'no_of_months' => round($exactDays / 30, 2)
             ]);
         }
-
-        $date = Carbon::parse($request->date_of_application);
-        $year = $date->format('y'); 
-        $month = $date->format('m'); 
-        
-        $lastLoan = Loan::whereYear('date_of_application', $date->year)
-                        ->whereMonth('date_of_application', $date->month)
-                        ->orderBy('control_number', 'desc')
-                        ->first();
-
-        if ($lastLoan) {
-            $lastSequence = (int) substr($lastLoan->control_number, -3);
-            $nextSequence = $lastSequence + 1;
-        } else {
-            $nextSequence = 1;
-        }
-        
-        $control_number = $year . '-' . $month . '-' . str_pad($nextSequence, 3, '0', STR_PAD_LEFT);
 
         $office = Office::firstOrCreate(['name' => strtoupper($request->office_name)]);
         
@@ -197,7 +191,7 @@ class FinanceController extends Controller
             'borrower_id' => $borrower->id,
             'type' => strtoupper($request->type),
             'employee_type' => $request->employee_type,
-            'control_number' => $control_number,
+            'control_number' => strtoupper($request->control_number), // Using the manual input
             'date_of_application' => $request->date_of_application,
             'amount_granted' => $request->amount_granted,
             'service_fee' => $request->service_fee ?? 0,
@@ -212,7 +206,7 @@ class FinanceController extends Controller
         ]);
 
         return redirect()->route('finance.show', $loan->id)
-                         ->with('success', 'Application Added! Control No: ' . $control_number);
+                         ->with('success', 'Application Added! Control No: ' . $loan->control_number);
     }
 
     public function show($id)
@@ -229,15 +223,31 @@ class FinanceController extends Controller
 
     public function update(Request $request, $id)
     {
-        $request->validate([
+        $loan = Loan::with('borrower')->findOrFail($id);
+
+        $rules = [
+            'control_number' => [
+                'required', 
+                'string',
+                'regex:/^\d{2}-\d{2}-\d{3}$/',
+                \Illuminate\Validation\Rule::unique('loans')->where(function ($query) use ($loan) {
+                    return $query->where('type', $loan->type);
+                })->ignore($loan->id) 
+            ],
             'borrower_name' => 'required|string|max:255',
             'employee_id' => 'required|string|max:255',
             'co_maker' => 'nullable|string|max:255',
             'office_name' => 'required|string|max:255',
             'date_of_application' => 'required|date',
-        ]);
+        ];
 
-        $loan = Loan::with('borrower')->findOrFail($id);
+        $messages = [
+            'control_number.unique' => 'This Control Number already exists for this Loan Type.',
+            'control_number.regex' => 'The Control Number must follow the exact format YY-MM-NNN (e.g., 26-05-001).'
+        ];
+
+        $request->validate($rules, $messages);
+
         $employeeIdUpper = strtoupper($request->employee_id);
 
         $idTakenByOther = Borrower::where('employee_id', $employeeIdUpper)
@@ -260,6 +270,7 @@ class FinanceController extends Controller
         ]);
 
         $loan->update([
+            'control_number' => strtoupper($request->control_number), // Save the edited control number
             'date_of_application' => $request->date_of_application,
         ]);
 

@@ -497,7 +497,7 @@
                 <div class="modal-body px-4 py-4">
                     
                     <div class="row mb-3">
-                        <div class="col-12">
+                        <div class="col-md-6">
                             <label class="fw-semibold text-secondary small mb-1 px-1">Select Loan Type <span class="text-danger">*</span></label>
                             <select name="type" class="form-select glass-input fw-bold px-3 py-2" required>
                                 <option value="" disabled selected>Choose loan category...</option>
@@ -506,6 +506,17 @@
                                 <option value="CASAB">CASAB Loan</option>
                             </select>
                             <div class="invalid-feedback ps-2">Please select a loan type.</div>
+                        </div>
+                        
+                        <div class="col-md-6 mt-3 mt-md-0">
+                            <label class="fw-semibold text-secondary small mb-1 px-1">Control Number <span class="text-danger">*</span></label>
+                            <input type="text" name="control_number" id="control_number_input" class="form-control glass-input fw-bold px-3 py-2 @error('control_number') is-invalid @enderror" placeholder="Ex: {{ date('y-m') }}-001" value="{{ old('control_number') }}" pattern="\d{2}-\d{2}-\d{3}" title="Format must be YY-MM-NNN (e.g., 26-05-001)" required>                            
+                            
+                            @error('control_number')
+                                <div class="invalid-feedback ps-2 d-block">{{ $message }}</div>
+                            @else
+                                <div class="invalid-feedback ps-2">A valid Control Number is required (Format: YY-MM-NNN).</div>
+                            @enderror
                         </div>
                     </div>
 
@@ -760,6 +771,32 @@
         $('#createLoanModal').appendTo('body');
         $('.loan-delete-modal').appendTo('body');
         $('#regularSchedExportModal').appendTo('body');
+
+        let controlNumberInput = document.getElementById('control_number_input');
+        if (controlNumberInput) {
+            controlNumberInput.addEventListener('input', function(e) {
+                let val = this.value.replace(/\D/g, ''); 
+                let formatted = '';
+                
+                if (val.length > 0) {
+                    formatted += val.substring(0, 2);
+                }
+                if (val.length > 2) {
+                    formatted += '-' + val.substring(2, 4);
+                }
+                if (val.length > 4) {
+                    formatted += '-' + val.substring(4, 7);
+                }
+                
+                this.value = formatted;
+
+                let regex = /^\d{2}-\d{2}-\d{3}$/;
+                if (regex.test(formatted)) {
+                    this.classList.remove('is-invalid');
+                    document.getElementById('control_number_error').style.display = 'none';
+                }
+            });
+        }
         
         @if($errors->has('employee_id'))
             var createModal = new bootstrap.Modal(document.getElementById('createLoanModal'));
